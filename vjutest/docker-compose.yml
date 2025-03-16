@@ -1,0 +1,31 @@
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql-docker
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: vjutestdb
+      MYSQL_PASSWORD: root
+    ports:
+      - "3308:3306"
+    networks:
+      - vjutest-mysql
+
+  app:
+    build: .
+    volumes:
+      - .:/vjutest
+    container_name: vjutest-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/vjutestdb?serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    networks:
+      - vjutest-mysql
+
+networks:
+  vjutest-mysql:
+    name: vjutest-mysql
