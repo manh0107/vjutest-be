@@ -7,8 +7,12 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
+@Setter
+@Getter
 @Table(name = "exams")
 public class Exam {
 
@@ -34,7 +38,6 @@ public class Exam {
 
     @Column(name = "max_score", nullable = false)
     private Integer maxScore;
-
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

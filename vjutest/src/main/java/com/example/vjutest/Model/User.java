@@ -23,9 +23,13 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 @Entity
+@Getter
+@Setter
 @Table(name="users")
 public class User {
 
@@ -69,6 +73,9 @@ public class User {
     private Set<ClassEntity> createClasses;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Subject> createSubjects;
+
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Exam> createdExams;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -92,91 +99,6 @@ public class User {
         this.password = password;
         this.role = role;
         this.image = (image != null && !image.isEmpty()) ? image : "default.jpg";  
-        this.createdAt = LocalDateTime.now();
-    }
-
-    public Long getId() {
-        return id;
-    }
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Long getCode() {
-        return code;
-    }
-    public void setCode(Long code) {
-        this.code = code;
-    }
-
-    public Long getPhoneNumber() {
-        return phoneNumber;
-    }
-    public void setPhoneNumber(Long phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
-    public String getClassName() {
-        return className;
-    }
-    public void setClassName(String className) {
-        this.className = className;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-    public void setGender(String gender) {
-        this.gender = gender;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public String getImage() {
-        return image;
-    }
-    public void setImage(String image) {
-        this.image = image;
-    }
-
-    public Set<ClassEntity> getCreateClasses() {
-        return createClasses;
-    }
-    public void setCreateClasses(Set<ClassEntity> createClasses) {
-        this.createClasses = createClasses;
-    }
-
-    public Set<ClassEntity> getClasses() {
-        return classes;
-    }
-    public void setClasses(Set<ClassEntity> classes) {
-        this.classes = classes;
     }
 
     @PrePersist

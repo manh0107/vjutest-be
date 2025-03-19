@@ -1,5 +1,8 @@
 package com.example.vjutest.Service;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -33,4 +36,11 @@ public class ClassEntityService {
         return classEntityRepository.save(newClassEntity);
     }
     
+    public List<ClassEntity> getAllClasses() {
+        return classEntityRepository.findAll();
+    }
+
+    public Optional<ClassEntity> getClassById(Long id) {
+        return classEntityRepository.findById(id);
+    }
 }

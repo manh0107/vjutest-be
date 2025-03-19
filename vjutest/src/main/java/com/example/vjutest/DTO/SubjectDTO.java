@@ -2,15 +2,14 @@ package com.example.vjutest.DTO;
 
 import lombok.Getter;
 import lombok.Setter;
-import java.util.List;
 
-@Setter
 @Getter
-public class ClassEntityDTO {
+@Setter
+public class SubjectDTO {
     private Long id;
     private String name;
-    private String classCode;
+    private String subjectCode;
     private String description;
-    private Long createdById;
-    private List<?> users;
+    private Integer creditHour;
+    private Long createdBy; 
 }

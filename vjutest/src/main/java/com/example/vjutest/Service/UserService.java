@@ -1,5 +1,8 @@
 package com.example.vjutest.Service;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.example.vjutest.Model.Role;
@@ -10,10 +13,10 @@ import com.example.vjutest.Repository.UserRepository;
 @Service
 public class UserService {
 
-    @Autowired
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-
+    
+    @Autowired
     public UserService(UserRepository userRepository, RoleRepository roleRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -21,7 +24,7 @@ public class UserService {
 
     public User createUser(String name, Long code, Long phoneNumber, String className, String gender, String email, String password, Long roleId, String image) {
         Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy vai trò"));
 
         User user = new User(name, code, phoneNumber, className, gender, email, password, role, image);
         return userRepository.save(user);
@@ -50,5 +53,13 @@ public class UserService {
         
         user.setRole(role);
         return userRepository.save(user);
+    }
+
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    public Optional<User> getUserById(Long id) {
+        return userRepository.findById(id);
     }
 }
