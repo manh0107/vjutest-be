@@ -2,6 +2,7 @@ package com.example.vjutest.Model;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -63,30 +64,42 @@ public class ClassEntity {
         joinColumns = @JoinColumn(name = "class_id"),
         inverseJoinColumns = @JoinColumn(name = "user_id")
     )
-    private Set<User> users;
+    private Set<User> users = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "class_teachers",
+        joinColumns = @JoinColumn(name = "class_id"),
+        inverseJoinColumns = @JoinColumn(name = "teacher_id")
+    )
+    private Set<User> teachers = new HashSet<>();
 
     @OneToMany(mappedBy = "classEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ClassSubject> classSubjects = new ArrayList<>();
 
     public ClassEntity() {}
 
-    public ClassEntity(String name, String description, String classCode, User createdBy) {
+    public ClassEntity(String name, String classCode, String description,  User createdBy) {
         this.name = name;
-        this.description = description;
         this.classCode = classCode;
+        this.description = description;
         this.createdBy = createdBy;
     }
 
     @PrePersist
     public void prePersist() {
-        if (this.classCode == null || !this.classCode.startsWith("C-")) {
+        if (this.classCode != null && !this.classCode.startsWith("C-")) {
             this.classCode = "C-" + this.classCode;
         }
     }
     @PreUpdate
     public void preUpdate() {
-        if (this.classCode == null || !this.classCode.startsWith("C-")) {
+        if (this.classCode != null && !this.classCode.startsWith("C-")) {
             this.classCode = "C-" + this.classCode;
         }
+    }
+
+    public boolean isTeacherOfClass(User user) {
+        return this.getTeachers().contains(user) || this.getCreatedBy().equals(user);
     }
 }

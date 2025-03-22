@@ -30,7 +30,7 @@ public class ClassEntityMapper {
         dto.setClassCode(entity.getClassCode());
         dto.setDescription(entity.getDescription());
         if (entity.getCreatedBy() != null) {
-            dto.setCreatedById(entity.getCreatedBy().getId());
+            dto.setCreatedBy(entity.getCreatedBy().getId());
         }
 
         // Lấy đầy đủ thông tin user
@@ -51,7 +51,7 @@ public class ClassEntityMapper {
         dto.setClassCode(entity.getClassCode());
         dto.setDescription(entity.getDescription());
         if (entity.getCreatedBy() != null) {
-            dto.setCreatedById(entity.getCreatedBy().getId());
+            dto.setCreatedBy(entity.getCreatedBy() != null ? entity.getCreatedBy().getId() : null);
         }
 
         // Chỉ lấy danh sách UserSimpleDTO thay vì UserDTO đầy đủ

@@ -26,7 +26,6 @@ public class JoinRequestService {
         this.userRepository = userRepository;
     }
 
-
     public String requestToJoin(Long userId, Long classId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
         ClassEntity classEntity = classEntityRepository.findById(classId).orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học!"));
