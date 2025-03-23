@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.vjutest.DTO.ClassEntityDTO;
+import com.example.vjutest.DTO.UserSimpleDTO;
 import com.example.vjutest.Mapper.ClassEntityMapper;
 import com.example.vjutest.Model.ClassEntity;
 import com.example.vjutest.Service.ClassEntityService;
@@ -64,39 +65,29 @@ public class ClassEntityController {
 
     //Cập nhật lớp học
     @PutMapping("/update/{id}")
-    public ResponseEntity<ClassEntity> updateClass(
+    public ResponseEntity<ClassEntityDTO> updateClass(
             @PathVariable Long id,
             @RequestBody ClassEntity classEntity,
             @RequestParam Long userId) {
         ClassEntity updatedClass = classEntityService.updateClass(id, classEntity, userId);
-        return ResponseEntity.ok(updatedClass);
+        return ResponseEntity.ok(classEntityMapper.toSimpleDTO(updatedClass));
     }
 
     //Xóa lớp học
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> deleteClass(@PathVariable Long id, @RequestParam Long userId) {
         classEntityService.deleteClass(id, userId);
-        return ResponseEntity.ok("Lớp học đã được xóa");
+        return ResponseEntity.ok("Lớp học đã được xóa!");
     }
 
-    //Thêm học sinh vào lớp
+    //Thêm sinh viên vào lớp
     @PostMapping("/{classId}/add-student")
     public ResponseEntity<String> addStudentToClass(
             @PathVariable Long classId,
             @RequestParam Long studentId,
             @RequestParam Long userId) {
         classEntityService.addStudentToClass(classId, studentId, userId);
-        return ResponseEntity.ok("Học sinh đã được thêm vào lớp");
-    }
-
-    //Xóa học sinh khỏi lớp
-    @DeleteMapping("/{classId}/remove-student")
-    public ResponseEntity<String> removeStudentFromClass(
-            @PathVariable Long classId,
-            @RequestParam Long studentId,
-            @RequestParam Long userId) {
-        classEntityService.removeStudentFromClass(classId, studentId, userId);
-        return ResponseEntity.ok("Học sinh đã được xóa khỏi lớp");
+        return ResponseEntity.ok("Học sinh đã được thêm vào lớp!");
     }
 
     //Mời giáo viên vào lớp
@@ -106,6 +97,50 @@ public class ClassEntityController {
             @RequestParam Long inviterId,
             @RequestParam Long inviteeId) {
         classEntityService.inviteTeacher(classId, inviterId, inviteeId);
-        return ResponseEntity.ok("Giáo viên đã được mời vào lớp");
+        return ResponseEntity.ok("Giáo viên đã được mời vào lớp!");
+    }
+
+    //Sinh viên yêu cầu tham gia lớp
+    @PostMapping("/request")
+    public ResponseEntity<?> requestToJoin(@RequestParam Long studentId, @RequestParam Long classId) {
+        try {
+            String message = classEntityService.requestToJoin(studentId, classId);
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    //Sinh viên rời khỏi lớp
+    @DeleteMapping("/{classId}/leave/{studentId}")
+    public ResponseEntity<String> leaveClass (
+            @PathVariable Long classId,
+            @PathVariable Long studentId) {
+        classEntityService.leaveClass(classId, studentId);
+        return ResponseEntity.ok("Bạn đã rời khỏi lớp học thành công!");
+    }
+
+     //Xóa sinh viên khỏi lớp
+     @DeleteMapping("/{classId}/remove-student")
+     public ResponseEntity<String> removeStudentFromClass(
+             @PathVariable Long classId,
+             @RequestParam Long studentId,
+             @RequestParam Long userId) {
+         classEntityService.removeStudentFromClass(classId, studentId, userId);
+         return ResponseEntity.ok("Học sinh đã được xóa khỏi lớp!");
+     }
+
+     //Lấy danh sách sinh viên trong lớp học
+    @GetMapping("/{classId}/students")
+    public ResponseEntity<List<UserSimpleDTO>> getStudentsInClass(@PathVariable Long classId) {
+        List<UserSimpleDTO> students = classEntityService.getStudentsInClass(classId);
+        return ResponseEntity.ok(students);
+    }
+
+    //Lấy danh sách giáo viên trong lớp học
+    @GetMapping("/{classId}/teachers")
+    public ResponseEntity<List<UserSimpleDTO>> getTeachersInClass(@PathVariable Long classId) {
+        List<UserSimpleDTO> teachers = classEntityService.getTeachersInClass(classId);
+        return ResponseEntity.ok(teachers);
     }
 }

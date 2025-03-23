@@ -1,8 +1,10 @@
 package com.example.vjutest.Mapper;
 
 import org.springframework.stereotype.Component;
+
 import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.DTO.UserSimpleDTO;
+import com.example.vjutest.Model.JoinRequest;
 import com.example.vjutest.Model.User;
 import java.util.List;
 import java.util.Collection;
@@ -10,6 +12,7 @@ import java.util.stream.Collectors;
 
 @Component
 public class UserMapper {
+
     public UserDTO toDTO(User user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
@@ -28,7 +31,14 @@ public class UserMapper {
         dto.setCreatedExams(convertToIdList(user.getCreatedExams()));
         dto.setCreatedQuestions(convertToIdList(user.getCreatedQuestions()));
         dto.setClasses(convertToIdList(user.getClasses()));
-        dto.setUserAnswer(convertToIdList(user.getUserAnswer()));
+        dto.setTeacherOfClasses(convertToIdList(user.getTeacherOfClasses()));
+        dto.setUserAnswers(convertToIdList(user.getUserAnswers()));
+
+        dto.setJoinRequests((user.getJoinRequests() != null) ? 
+            user.getJoinRequests().stream()
+                .map(JoinRequest::getId) // Lấy danh sách ID của JoinRequest
+                .collect(Collectors.toList()) 
+            : null);
 
         return dto;
     }

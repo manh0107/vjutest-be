@@ -23,13 +23,17 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 @Entity
 @Getter
 @Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name="users")
 public class User {
 
@@ -84,10 +88,14 @@ public class User {
     @ManyToMany(mappedBy = "users")
     private Set<ClassEntity> classes;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<UserAnswer> userAnswer;
+    @ManyToMany(mappedBy = "teachers")
+    private Set<ClassEntity> teacherOfClasses;
 
-    public User() {}
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<JoinRequest> joinRequests;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserAnswer> userAnswers;
 
     public User(String name, Long code, Long phoneNumber, String className, String gender, String email, String password, Role role, String image) {
         this.name = name;

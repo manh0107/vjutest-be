@@ -2,26 +2,35 @@ package com.example.vjutest.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.vjutest.DTO.UserSimpleDTO;
+import com.example.vjutest.Mapper.UserMapper;
 import com.example.vjutest.Model.ClassEntity;
+import com.example.vjutest.Model.JoinRequest;
 import com.example.vjutest.Model.User;
 import com.example.vjutest.Repository.ClassEntityRepository;
 import com.example.vjutest.Repository.UserRepository;
+import com.example.vjutest.Repository.JoinRequestRepository;
 
 @Service
 public class ClassEntityService {
 
-    @Autowired
     private final ClassEntityRepository classEntityRepository;
     private final UserRepository userRepository;
+    private final JoinRequestRepository joinRequestRepository;
+    private final UserMapper userMapper;
 
-    public ClassEntityService(ClassEntityRepository classEntityRepository, UserRepository userRepository) {
+    @Autowired
+    public ClassEntityService(ClassEntityRepository classEntityRepository, UserRepository userRepository, JoinRequestRepository joinRequestRepository, UserMapper userMapper) {
         this.classEntityRepository = classEntityRepository;
         this.userRepository = userRepository;
+        this.joinRequestRepository = joinRequestRepository;
+        this.userMapper = userMapper;
     }
 
     // Kiểm tra user có quyền thao tác trên lớp không (chỉ giáo viên tạo lớp hoặc admin)
@@ -92,7 +101,7 @@ public class ClassEntityService {
         classEntityRepository.delete(existingClass);
     }
 
-    // Thêm học sinh vào lớp (chỉ giáo viên tạo lớp hoặc admin)
+    // Thêm sinh viên vào lớp (chỉ giáo viên tạo lớp hoặc admin)
     @Transactional
     public void addStudentToClass(Long classId, Long studentId, Long userId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
@@ -109,7 +118,7 @@ public class ClassEntityService {
         classEntityRepository.save(classEntity);
     }
 
-    // Xóa học sinh khỏi lớp (chỉ giáo viên tạo lớp hoặc admin)
+    // Xóa sinh viên khỏi lớp (chỉ giáo viên tạo lớp hoặc admin)
     @Transactional
     public void removeStudentFromClass(Long classId, Long studentId, Long userId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
@@ -123,6 +132,26 @@ public class ClassEntityService {
         classEntityRepository.save(classEntity);
     }
 
+    //Sinh viên yêu cầu tham gia lớp học
+    @Transactional
+    public String requestToJoin(Long studentId, Long classId) {
+        User user = userRepository.findById(studentId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+        ClassEntity classEntity = classEntityRepository.findById(classId).orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học!"));
+
+        if (!user.getRole().getName().equals("student")) {
+            throw new RuntimeException("Chỉ sinh viên mới có thể tham gia lớp học!");
+        }
+
+        Optional<JoinRequest> existingRequest = joinRequestRepository.findByUserAndClassEntity(user, classEntity);
+        if (existingRequest.isPresent()) {
+            throw new RuntimeException("Bạn đã gửi yêu cầu tham gia lớp học này rồi!");
+        }
+
+        JoinRequest joinRequest = new JoinRequest(user, classEntity, JoinRequest.Status.PENDING, JoinRequest.Type.STUDENT_REQUEST);
+        joinRequestRepository.save(joinRequest);
+        return "Yêu cầu tham gia lớp học đã được gửi!";
+    }
+
     //Mời giáo viên vào lớp
     @Transactional
     public void inviteTeacher(Long classId, Long inviterId, Long inviteeId) {
@@ -132,16 +161,68 @@ public class ClassEntityService {
                 .orElseThrow(() -> new RuntimeException("Người mời không tồn tại"));
         User invitee = userRepository.findById(inviteeId)
                 .orElseThrow(() -> new RuntimeException("Giáo viên được mời không tồn tại"));
-        
+
         if (!classEntity.isTeacherOfClass(inviter)) {
             throw new RuntimeException("Bạn không có quyền mời giáo viên vào lớp này");
         }
-        
+
         if (!invitee.getRole().getName().equalsIgnoreCase("teacher")) {
             throw new RuntimeException("Chỉ có thể mời giáo viên vào lớp");
         }
-        
-        classEntity.getTeachers().add(invitee);
+
+        if (inviterId.equals(inviteeId)) {
+            throw new RuntimeException("Bạn không thể tự mời chính mình vào lớp!");
+        }        
+
+        // Kiểm tra xem đã có lời mời chưa
+        Optional<JoinRequest> existingRequest = joinRequestRepository.findByUserAndClassEntity(invitee, classEntity);
+        if (existingRequest.isPresent()) {
+            throw new RuntimeException("Đã gửi lời mời cho giáo viên này!");
+        }
+
+        // Lưu lời mời vào bảng JoinRequest
+        JoinRequest inviteRequest = new JoinRequest(invitee, classEntity, JoinRequest.Status.PENDING, JoinRequest.Type.TEACHER_INVITE);
+        joinRequestRepository.save(inviteRequest);
+    }
+
+    //Sinh viên rời lớp học
+    @Transactional
+    public String leaveClass(Long classId, Long studentId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Sinh viên không tồn tại"));
+
+        if (!student.getRole().getName().equalsIgnoreCase("student")) {
+            throw new RuntimeException("Chỉ sinh viên mới có thể rời lớp học");
+        }
+
+        if (!classEntity.getUsers().contains(student)) {
+            throw new RuntimeException("Bạn không phải là thành viên của lớp này");
+        }
+
+        classEntity.getUsers().remove(student);
         classEntityRepository.save(classEntity);
+        return "Bạn đã rời khỏi lớp học!";
+    }
+
+    // Lấy danh sách sinh viên trong lớp học
+    public List<UserSimpleDTO> getStudentsInClass(Long classId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+
+        return classEntity.getUsers().stream()
+                .map(userMapper::toSimpleDTO) 
+                .collect(Collectors.toList());
+    }
+
+    // Lấy danh sách giáo viên trong lớp học
+    public List<UserSimpleDTO> getTeachersInClass(Long classId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+
+        return classEntity.getTeachers().stream()
+                .map(userMapper::toSimpleDTO) 
+                .collect(Collectors.toList());
     }
 }

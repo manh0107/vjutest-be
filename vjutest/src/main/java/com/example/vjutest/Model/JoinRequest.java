@@ -26,6 +26,10 @@ public class JoinRequest {
     @Column(name = "status", nullable = false)
     private Status status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type")
+    private Type type;
+
     public JoinRequest() {}
 
     public JoinRequest(User user, ClassEntity classEntity) {
@@ -34,7 +38,19 @@ public class JoinRequest {
         this.status = Status.PENDING; 
     }
 
+    public JoinRequest(User user, ClassEntity classEntity, Status status, Type type) {
+        this.user = user;
+        this.classEntity = classEntity;
+        this.status = status;
+        this.type = type;
+    }
+
     public enum Status {
         PENDING, APPROVED, REJECTED
+    }
+
+    public enum Type {
+        STUDENT_REQUEST,
+        TEACHER_INVITE
     }
 }

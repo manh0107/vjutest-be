@@ -74,6 +74,9 @@ public class ClassEntity {
     )
     private Set<User> teachers = new HashSet<>();
 
+    @OneToMany(mappedBy = "classEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<JoinRequest> joinRequests;
+
     @OneToMany(mappedBy = "classEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ClassSubject> classSubjects = new ArrayList<>();
 

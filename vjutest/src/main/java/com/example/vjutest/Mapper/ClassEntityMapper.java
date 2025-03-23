@@ -1,6 +1,7 @@
 package com.example.vjutest.Mapper;
 
 import com.example.vjutest.DTO.ClassEntityDTO;
+import com.example.vjutest.DTO.JoinRequestDTO;
 import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.DTO.UserSimpleDTO;
 import com.example.vjutest.Model.ClassEntity;
@@ -15,52 +16,89 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Component
 public class ClassEntityMapper {
 
-    private UserMapper userMapper;
+    private final UserMapper userMapper;
+    private final JoinRequestMapper joinRequestMapper;
 
     @Autowired
-    public ClassEntityMapper(UserMapper userMapper) {
+    public ClassEntityMapper(UserMapper userMapper, JoinRequestMapper joinRequestMapper) {
         this.userMapper = userMapper;
+        this.joinRequestMapper = joinRequestMapper;
     }
 
-    // 🔹 Dùng khi lấy chi tiết lớp học (Hiển thị đầy đủ thông tin user)
+    //Lấy đầy đủ thông tin
     public ClassEntityDTO toFullDTO(ClassEntity entity) {
         ClassEntityDTO dto = new ClassEntityDTO();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
         dto.setClassCode(entity.getClassCode());
         dto.setDescription(entity.getDescription());
+
         if (entity.getCreatedBy() != null) {
             dto.setCreatedBy(entity.getCreatedBy().getId());
         }
 
-        // Lấy đầy đủ thông tin user
-        List<UserDTO> userDTOs = (entity.getUsers() != null) ? 
-            entity.getUsers().stream()
-                .map(userMapper::toDTO) // Lấy đầy đủ thông tin của user
+        //Lấy đầy đủ thông tin JoinRequest + User gửi request
+        List<JoinRequestDTO> joinRequestDTOs = (entity.getJoinRequests() != null) ? 
+            entity.getJoinRequests().stream()
+                .map(joinRequestMapper::toFullDTO)  // Lấy cả thông tin User gửi request
                 .collect(Collectors.toList()) 
             : null;
-        dto.setUsers(userDTOs);
+        dto.setJoinRequests(joinRequestDTOs); 
+
+        //Lấy danh sách giáo viên (Teachers)
+        List<UserDTO> teacherDTOs = (entity.getTeachers() != null) ? 
+            entity.getTeachers().stream() 
+                .map(userMapper::toDTO) 
+                .collect(Collectors.toList()) 
+            : null;
+        dto.setTeachers(teacherDTOs);  
+
+        //Lấy danh sách học sinh (Students)
+        List<UserDTO> userDTOs = (entity.getUsers() != null) ? 
+            entity.getUsers().stream()
+                .map(userMapper::toDTO) 
+                .collect(Collectors.toList()) 
+            : null;
+        dto.setUsers(userDTOs);  
 
         return dto;
     }
 
+    //Chỉ lấy ID đơn giản
     public ClassEntityDTO toSimpleDTO(ClassEntity entity) {
         ClassEntityDTO dto = new ClassEntityDTO();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
         dto.setClassCode(entity.getClassCode());
         dto.setDescription(entity.getDescription());
+
         if (entity.getCreatedBy() != null) {
-            dto.setCreatedBy(entity.getCreatedBy() != null ? entity.getCreatedBy().getId() : null);
+            dto.setCreatedBy(entity.getCreatedBy().getId());
         }
 
-        // Chỉ lấy danh sách UserSimpleDTO thay vì UserDTO đầy đủ
+        //Chỉ lấy ID của JoinRequest
+        dto.setJoinRequests((entity.getJoinRequests() != null) ? 
+            entity.getJoinRequests().stream()
+                .map(joinRequestMapper::toSimpleDTO) 
+                .collect(Collectors.toList()) 
+            : null);
+
+        //Lấy danh sách giáo viên (Teachers id)
+        List<UserSimpleDTO> teacherDTOs = (entity.getTeachers() != null) ? 
+            entity.getTeachers().stream() 
+                .map(userMapper::toSimpleDTO) 
+                .collect(Collectors.toList()) 
+            : null;
+        dto.setTeachers(teacherDTOs); 
+
+        //Lấy danh sách học sinh đơn giản (chỉ ID)
         List<UserSimpleDTO> userDTOs = (entity.getUsers() != null) ? 
             entity.getUsers().stream()
-                .map(userMapper::toSimpleDTO) // Chỉ lấy thông tin cần thiết
+                .map(userMapper::toSimpleDTO) 
                 .collect(Collectors.toList()) 
             : null;
         dto.setUsers(userDTOs);
+
         return dto;
     }
 }
