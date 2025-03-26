@@ -14,6 +14,7 @@ public class SubjectMapper {
         dto.setDescription(subject.getDescription());
         dto.setCreditHour(subject.getCreditHour());
         dto.setCreatedBy(subject.getCreatedBy().getId()); 
+        dto.setCreatedByName(subject.getCreatedBy().getName());
         return dto;
     }
 }

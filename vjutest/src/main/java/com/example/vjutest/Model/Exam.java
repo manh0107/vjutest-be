@@ -36,7 +36,7 @@ public class Exam {
     @JoinColumn(name = "class_subject_id", nullable = false)
     private ClassSubject classSubject;
 
-    @Column(name = "max_score", nullable = false)
+    @Column(name = "max_score")
     private Integer maxScore;
 
     @Enumerated(EnumType.STRING)
@@ -90,8 +90,6 @@ public class Exam {
         this.endAt = endAt;
         this.status = status;
         this.createdBy = createdBy;
-        this.createdAt = LocalDateTime.now();
-        this.modifiedAt = LocalDateTime.now();
     }
 
     public enum Status {

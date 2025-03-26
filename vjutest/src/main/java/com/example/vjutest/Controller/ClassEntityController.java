@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.vjutest.DTO.ClassEntityDTO;
-import com.example.vjutest.DTO.UserSimpleDTO;
+import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.Mapper.ClassEntityMapper;
 import com.example.vjutest.Model.ClassEntity;
 import com.example.vjutest.Service.ClassEntityService;
@@ -132,15 +132,15 @@ public class ClassEntityController {
 
      //Lấy danh sách sinh viên trong lớp học
     @GetMapping("/{classId}/students")
-    public ResponseEntity<List<UserSimpleDTO>> getStudentsInClass(@PathVariable Long classId) {
-        List<UserSimpleDTO> students = classEntityService.getStudentsInClass(classId);
+    public ResponseEntity<List<UserDTO>> getStudentsInClass(@PathVariable Long classId) {
+        List<UserDTO> students = classEntityService.getStudentsInClass(classId);
         return ResponseEntity.ok(students);
     }
 
     //Lấy danh sách giáo viên trong lớp học
     @GetMapping("/{classId}/teachers")
-    public ResponseEntity<List<UserSimpleDTO>> getTeachersInClass(@PathVariable Long classId) {
-        List<UserSimpleDTO> teachers = classEntityService.getTeachersInClass(classId);
+    public ResponseEntity<List<UserDTO>> getTeachersInClass(@PathVariable Long classId) {
+        List<UserDTO> teachers = classEntityService.getTeachersInClass(classId);
         return ResponseEntity.ok(teachers);
     }
 }

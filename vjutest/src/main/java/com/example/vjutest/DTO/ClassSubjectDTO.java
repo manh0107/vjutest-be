@@ -9,12 +9,9 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class SubjectDTO {
+public class ClassSubjectDTO {
     private Long id;
-    private String name;
-    private String subjectCode;
-    private String description;
-    private Integer creditHour;
-    private Long createdBy;
-    private String createdByName; 
+    private ClassEntityDTO classEntity;
+    private SubjectDTO subject;
+    private String documentUrl;
 }

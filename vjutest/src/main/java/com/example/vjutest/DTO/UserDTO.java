@@ -20,7 +20,7 @@ public class UserDTO {
     private String gender;
     private String email;
     private String image;
-    private Long role;
+    private String role;
 
     private List<Long> createClasses;
     private List<Long> createSubjects;

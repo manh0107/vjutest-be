@@ -17,6 +17,7 @@ public class ClassEntityDTO {
     private String classCode;
     private String description;
     private Long createdBy;
+    private String createByName;
     private List<?> users;
     private List<?> teachers;
     private List<JoinRequestDTO> joinRequests;

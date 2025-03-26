@@ -1,5 +1,6 @@
 package com.example.vjutest.Mapper;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.example.vjutest.DTO.JoinRequestDTO;
@@ -8,8 +9,9 @@ import com.example.vjutest.Model.JoinRequest;
 @Component
 public class JoinRequestMapper {
 
-    private UserMapper userMapper;
+    private final UserMapper userMapper;
 
+    @Autowired
     public JoinRequestMapper(UserMapper userMapper) {
         this.userMapper = userMapper;
     }

@@ -23,7 +23,7 @@ public class UserMapper {
         dto.setGender(user.getGender());
         dto.setEmail(user.getEmail());
         dto.setImage(user.getImage());
-        dto.setRole(user.getRole().getId());
+        dto.setRole(user.getRole().getName());
 
         // Các danh sách có thể null nếu chưa có dữ liệu
         dto.setCreateClasses(convertToIdList(user.getCreateClasses()));

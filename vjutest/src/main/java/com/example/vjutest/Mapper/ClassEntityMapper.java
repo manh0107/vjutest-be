@@ -35,6 +35,7 @@ public class ClassEntityMapper {
 
         if (entity.getCreatedBy() != null) {
             dto.setCreatedBy(entity.getCreatedBy().getId());
+            dto.setCreateByName(entity.getCreatedBy().getName());
         }
 
         //Lấy đầy đủ thông tin JoinRequest + User gửi request
@@ -74,6 +75,7 @@ public class ClassEntityMapper {
 
         if (entity.getCreatedBy() != null) {
             dto.setCreatedBy(entity.getCreatedBy().getId());
+            dto.setCreateByName(entity.getCreatedBy().getName());
         }
 
         //Chỉ lấy ID của JoinRequest

@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.vjutest.DTO.UserSimpleDTO;
+import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.Mapper.UserMapper;
 import com.example.vjutest.Model.ClassEntity;
 import com.example.vjutest.Model.JoinRequest;
@@ -207,22 +207,22 @@ public class ClassEntityService {
     }
 
     // Lấy danh sách sinh viên trong lớp học
-    public List<UserSimpleDTO> getStudentsInClass(Long classId) {
+    public List<UserDTO> getStudentsInClass(Long classId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
 
         return classEntity.getUsers().stream()
-                .map(userMapper::toSimpleDTO) 
+                .map(userMapper::toDTO) 
                 .collect(Collectors.toList());
     }
 
     // Lấy danh sách giáo viên trong lớp học
-    public List<UserSimpleDTO> getTeachersInClass(Long classId) {
+    public List<UserDTO> getTeachersInClass(Long classId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
 
         return classEntity.getTeachers().stream()
-                .map(userMapper::toSimpleDTO) 
+                .map(userMapper::toDTO) 
                 .collect(Collectors.toList());
     }
 }
