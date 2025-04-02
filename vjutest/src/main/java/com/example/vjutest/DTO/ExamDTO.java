@@ -3,6 +3,7 @@ package com.example.vjutest.DTO;
 import java.time.LocalDateTime;
 
 import com.example.vjutest.Model.Exam.Status;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,7 +22,10 @@ public class ExamDTO {
     private Long durationTime;
     private Integer maxScore;
     private Status status;
-    private boolean isPublic;
+
+    @JsonProperty("isPublic")
+    private Boolean isPublic;
+    
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     private LocalDateTime createdAt;
@@ -35,4 +39,5 @@ public class ExamDTO {
     private Long subjectId;
     private String subjectName;
     private ClassSubjectDTO classSubject;
+    private SubjectDTO subject;
 }

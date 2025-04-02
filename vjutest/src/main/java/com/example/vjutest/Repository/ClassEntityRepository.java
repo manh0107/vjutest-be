@@ -12,4 +12,5 @@ import com.example.vjutest.Model.User;
 public interface ClassEntityRepository extends JpaRepository<ClassEntity, Long> {
     List<ClassEntity> findByUsers(User user);
     boolean existsByClassCode(String classCode);
+    boolean existsByIdAndUsers_Id(Long classId, Long userId);
 }

@@ -13,4 +13,6 @@ import com.example.vjutest.Model.User;
 public interface UserRepository extends JpaRepository<User, Long>{
     List<User> findByRole(Role role);
     Optional<User> findByEmail(String email);
+    boolean existsByEmail(String email);
+    Optional<User> findByVerificationToken(String token);
 }

@@ -2,17 +2,22 @@ package com.example.vjutest.Mapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
 import com.example.vjutest.DTO.ExamDTO;
+import com.example.vjutest.DTO.SubjectDTO;
 import com.example.vjutest.Model.Exam;
+import com.example.vjutest.Model.Exam.Status;
 
 @Component
 public class ExamMapper {
 
     private final ClassSubjectMapper classSubjectMapper;
+    private final SubjectMapper subjectMapper;
 
     @Autowired
-    public ExamMapper(ClassSubjectMapper classSubjectMapper) {
+    public ExamMapper(ClassSubjectMapper classSubjectMapper, SubjectMapper subjectMapper) {
         this.classSubjectMapper = classSubjectMapper;
+        this.subjectMapper = subjectMapper;
     }
 
     // Chuyển đổi Exam -> ExamDTO (Đơn giản)
@@ -29,7 +34,7 @@ public class ExamMapper {
         dto.setDurationTime(exam.getDurationTime());
         dto.setMaxScore(exam.getMaxScore());
         dto.setStatus(exam.getStatus());
-        dto.setPublic(exam.isPublic());
+        dto.setIsPublic(exam.getIsPublic());
         dto.setStartAt(exam.getStartAt());
         dto.setEndAt(exam.getEndAt());
         dto.setCreatedAt(exam.getCreatedAt());
@@ -52,6 +57,13 @@ public class ExamMapper {
                 dto.setSubjectName(exam.getClassSubject().getSubject().getName());
             }
         }
+
+        if (exam.getSubject() != null) {
+            SubjectDTO subjectDTO = new SubjectDTO();
+            subjectDTO.setId(exam.getSubject().getId());
+            subjectDTO.setName(exam.getSubject().getName());
+            dto.setSubject(subjectDTO);
+        }
         
         return dto;
     }
@@ -70,7 +82,7 @@ public class ExamMapper {
         dto.setDurationTime(exam.getDurationTime());
         dto.setMaxScore(exam.getMaxScore());
         dto.setStatus(exam.getStatus());
-        dto.setPublic(exam.isPublic());
+        dto.setIsPublic(exam.getIsPublic());
         dto.setStartAt(exam.getStartAt());
         dto.setEndAt(exam.getEndAt());
         dto.setCreatedAt(exam.getCreatedAt());
@@ -87,6 +99,32 @@ public class ExamMapper {
             dto.setClassSubject(classSubjectMapper.toFullDTO(exam.getClassSubject()));
         }
 
+        if (exam.getSubject() != null) {
+            dto.setSubject(subjectMapper.toDTO(exam.getSubject()));
+        }
+
         return dto;
     }
+
+    public Exam toEntity(ExamDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+    
+        Exam exam = new Exam();
+        exam.setId(dto.getId());
+
+        if (dto.getStatus() != null) {
+            try {
+                exam.setStatus(Status.valueOf(dto.getStatus().name())); 
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid status: " + dto.getStatus());
+            }
+        } else {
+            exam.setStatus(Status.DRAFT); // Giá trị mặc định nếu `status` là null
+        }
+    
+        return exam;
+    }
+    
 }

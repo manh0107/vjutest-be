@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
@@ -21,7 +19,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -35,7 +32,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name="users")
-public class User {
+public class User{
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -64,6 +61,12 @@ public class User {
 
     @Column(name = "image", nullable = false)
     private String image = "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg";
+
+    @Column(nullable = false)
+    private boolean enabled = false; // Mặc định chưa kích hoạt
+
+    @Column(unique = true)
+    private String verificationToken; // Lưu mã xác nhận email
 
     @CreationTimestamp 
     @Column(name = "created_at", updatable = false)
@@ -107,12 +110,6 @@ public class User {
         this.password = password;
         this.role = role;
         this.image = (image != null && !image.isEmpty()) ? image : "default.jpg";  
-    }
-
-    @PrePersist
-    public void hashPassword() {
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-        this.password = passwordEncoder.encode(this.password);
     }
 }
 

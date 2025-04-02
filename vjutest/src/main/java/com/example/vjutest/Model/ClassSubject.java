@@ -40,6 +40,9 @@ public class ClassSubject {
     @OneToMany(mappedBy = "classSubject", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Exam> exams;
 
+    @Column(name = "folder_id")
+    private String googleDriveFolderId;
+
     public ClassSubject() {
     }
 

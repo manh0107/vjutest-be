@@ -33,7 +33,7 @@ public class Exam {
     private Long durationTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "class_subject_id", nullable = false)
+    @JoinColumn(name = "class_subject_id", nullable = true)
     private ClassSubject classSubject;
 
     @Column(name = "max_score")
@@ -47,10 +47,9 @@ public class Exam {
     private String passQuit;
 
     @Column(name = "is_public", nullable = false)
-    private boolean isPublic;
+    private Boolean isPublic;
 
-    @CreationTimestamp
-    @Column(name = "start_at", updatable = false)
+    @Column(name = "start_at")
     private LocalDateTime startAt;
 
     @Column(name = "end_at")
@@ -74,6 +73,10 @@ public class Exam {
 
     @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ExamQuestion> examQuestions;
+
+    @ManyToOne
+    @JoinColumn(name = "subject_id", nullable = false) // Bắt buộc phải có môn học
+    private Subject subject;
 
     public Exam() {
     }
@@ -119,4 +122,13 @@ public class Exam {
             this.examCode = "E-" + this.examCode;
         }
     }
+
+    public boolean isPublic() {
+        return isPublic;
+    }
+    
+    public void setPublic(boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+    
 }
