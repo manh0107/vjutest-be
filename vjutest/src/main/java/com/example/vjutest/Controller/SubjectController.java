@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +34,7 @@ public class SubjectController {
         this.subjectMapper = subjectMapper;
     }
 
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create")
     public ResponseEntity<?> createSubject(@RequestParam Long userId, @RequestBody Subject subject) {
         try {
@@ -44,6 +46,7 @@ public class SubjectController {
         }
     }
 
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
     @GetMapping("/all")
     public ResponseEntity<List<SubjectDTO>> getAllSubjects() {
         List<Subject> subjects = subjectService.getAllSubjects();
@@ -53,6 +56,7 @@ public class SubjectController {
         return ResponseEntity.ok(subjectDTOs);
     }
 
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
     @GetMapping("/find/{id}")
     public ResponseEntity<?> getSubjectById(@PathVariable Long id) {
         return subjectService.getSubjectById(id)

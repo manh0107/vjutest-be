@@ -7,7 +7,7 @@ import com.example.vjutest.Repository.SubjectRepository;
 import com.example.vjutest.Repository.ClassEntityRepository;
 import com.example.vjutest.Service.ClassSubjectService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
@@ -28,30 +28,25 @@ public class ClassSubjectController {
         this.classSubjectService = classSubjectService;
     }
 
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/{classId}/{subjectId}/upload")
     public String uploadDocument(
             @PathVariable Long classId, 
             @PathVariable Long subjectId,
             @RequestParam("file") MultipartFile file,
-            @RequestParam("folderId") String folderId,
-            Authentication authentication) throws IOException, GeneralSecurityException {
-
-        // Kiểm tra quyền (Chỉ cho phép Teacher & Admin)
-        String role = authentication.getAuthorities().toString();
-        if (!role.contains("TEACHER") && !role.contains("ADMIN")) {
-            return "Bạn không có quyền upload tài liệu!";
-        }
-
+            @RequestParam("folderId") String folderId) throws IOException, GeneralSecurityException {
+    
         // Lấy classEntity và subject từ database
         ClassEntity classEntity = classEntityRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Class not found"));
-
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học!"));
+    
         Subject subject = subjectRepository.findById(subjectId)
-                .orElseThrow(() -> new RuntimeException("Subject not found"));
-
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy môn học!"));
+    
         // Upload file
         ClassSubject classSubject = classSubjectService.uploadDocument(classEntity, subject, file, folderId);
-
+    
         return "File uploaded: " + classSubject.getDocumentUrl();
     }
+    
 }

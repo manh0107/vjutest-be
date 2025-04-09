@@ -46,7 +46,7 @@ public class UserInitializer implements CommandLineRunner {
                 adminUser.setPassword(passwordEncoder.encode("vjutestadmin"));
                 adminUser.setImage("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg");
                 adminUser.setRole(adminRoleOpt.get());
-                adminUser.setEnabled(true); // Kích hoạt tài khoản ngay lập tức
+                adminUser.setIsEnabled(true); // Kích hoạt tài khoản ngay lập tức
 
                 userRepository.save(adminUser);
                 System.out.println("Admin user đã được tạo!");

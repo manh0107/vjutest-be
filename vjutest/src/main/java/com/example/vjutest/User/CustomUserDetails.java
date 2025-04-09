@@ -52,6 +52,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user.isEnabled();  // Trả về trạng thái kích hoạt của user
+        return user.getIsEnabled();  // Trả về trạng thái kích hoạt của user
     }
 }

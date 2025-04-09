@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,6 +28,7 @@ public class JoinRequestController {
     }
 
     @PostMapping("/approve")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<?> approveRequest(@RequestParam Long requestId, @RequestParam Long userId) {
         try {
             String message = joinRequestService.approveRequest(requestId, userId);
@@ -37,6 +39,7 @@ public class JoinRequestController {
     }
 
     @PostMapping("/reject")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<?> rejectRequest(@RequestParam Long requestId, @RequestParam Long userId) {
         try {
             String message = joinRequestService.rejectRequest(requestId, userId);
@@ -47,6 +50,7 @@ public class JoinRequestController {
     }
 
     @GetMapping("/all")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<List<JoinRequestDTO>> getAllRequests() {
         List<JoinRequest> requests = joinRequestService.getAllRequests();
         List<JoinRequestDTO> joinRequestDTOs = requests.stream()
@@ -55,6 +59,7 @@ public class JoinRequestController {
         return ResponseEntity.ok(joinRequestDTOs);
     }
 
+    @PreAuthorize("hasRole('ROLE_TEACHER')")
     @PostMapping("/{requestId}/approve")
     public ResponseEntity<String> approveTeacherInvite(
             @PathVariable Long requestId,
@@ -63,6 +68,7 @@ public class JoinRequestController {
         return ResponseEntity.ok(response);
     }
 
+    @PreAuthorize("hasRole('ROLE_TEACHER')")
     @PostMapping("/{requestId}/reject")
     public ResponseEntity<String> rejectTeacherInvite(
             @PathVariable Long requestId,

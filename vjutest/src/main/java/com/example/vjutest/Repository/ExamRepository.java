@@ -4,8 +4,11 @@ import com.example.vjutest.Model.Exam;
 import com.example.vjutest.Model.User;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
+@Repository
 public interface ExamRepository extends JpaRepository<Exam, Long> {
     List<Exam> findByClassSubject_ClassEntity_Id(Long classId); 
     List<Exam> findByClassSubject_ClassEntity_IdAndIsPublicTrue(Long classId);

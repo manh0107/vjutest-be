@@ -63,7 +63,7 @@ public class User{
     private String image = "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg";
 
     @Column(nullable = false)
-    private boolean enabled = false; // Mặc định chưa kích hoạt
+    private Boolean isEnabled;
 
     @Column(unique = true)
     private String verificationToken; // Lưu mã xác nhận email
@@ -100,7 +100,10 @@ public class User{
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserAnswer> userAnswers;
 
-    public User(String name, Long code, Long phoneNumber, String className, String gender, String email, String password, Role role, String image) {
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Token> tokens;
+
+    public User(String name, Long code, Long phoneNumber, String className, String gender, String email, String password, Role role, String image, Boolean isEnabled) {
         this.name = name;
         this.code = code;
         this.phoneNumber = phoneNumber;
@@ -109,7 +112,8 @@ public class User{
         this.email = email;
         this.password = password;
         this.role = role;
-        this.image = (image != null && !image.isEmpty()) ? image : "default.jpg";  
+        this.image = (image != null && !image.isEmpty()) ? image : "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg";
+        this.isEnabled = false; 
     }
 }
 

@@ -7,6 +7,7 @@ import com.example.vjutest.Service.ExamService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class ExamController {
     }
 
     //Tạo bài kiểm tra
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create")
     public ResponseEntity<ExamDTO> createExam(
             @RequestParam Long classId,                                                            
@@ -34,6 +36,7 @@ public class ExamController {
     }
 
     //Lấy danh sách bài kiểm tra trong lớp
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
     @GetMapping("/class/{classId}")
     public ResponseEntity<List<ExamDTO>> getExamsInClass(
             @PathVariable Long classId,
@@ -45,6 +48,7 @@ public class ExamController {
     }
 
     //Lấy thông tin bài kiểm tra theo ID
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
     @GetMapping("/find/{examId}")
     public ResponseEntity<ExamDTO> getExamById(
             @PathVariable Long examId,
@@ -54,6 +58,7 @@ public class ExamController {
     }
 
     //Cập nhật status để  hoàn thành tạo bài thi
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PutMapping("/{examId}/status")
     public ResponseEntity<ExamDTO> updateExamStatus(
             @PathVariable Long examId,
@@ -72,6 +77,7 @@ public class ExamController {
     }
 
     //Tạo bài kiểm tra bên ngoài lớp học
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create-without-class")
     public ResponseEntity<ExamDTO> createExamWithoutClass(
             @RequestParam Long subjectId,
@@ -83,6 +89,7 @@ public class ExamController {
     }
     
     //Lấy danh sách bài kiểm tra public theo môn học
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
     @GetMapping("/public-exams/{subjectId}")
     public ResponseEntity<List<ExamDTO>> getExamsBySubjectAndUser(@RequestParam Long subjectId, @RequestParam Long userId) {
         return ResponseEntity.ok(examService.getExamsBySubjectAndUser(subjectId, userId));

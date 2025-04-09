@@ -58,12 +58,26 @@ public class ClassEntityService {
     }
 
     // Lấy danh sách lớp học
-    public List<ClassEntity> getAllClasses() {
+    public List<ClassEntity> getAllClasses(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng: " + userId));
+
+        if (!user.getRole().getName().equalsIgnoreCase("student") && classEntityRepository.findAll().stream().noneMatch(classEntity -> isAuthorized(userId, classEntity))) {
+            throw new RuntimeException("Bạn không có quyền truy cập vào danh sách lớp học!");
+        }
+
         return classEntityRepository.findAll();
     }
 
     // Lấy lớp học theo ID
-    public Optional<ClassEntity> getClassById(Long id) {
+    public Optional<ClassEntity> getClassById(Long id, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng: " + userId));
+
+        if (!user.getRole().getName().equalsIgnoreCase("student") && classEntityRepository.findAll().stream().noneMatch(classEntity -> isAuthorized(userId, classEntity))) {
+            throw new RuntimeException("Bạn không có quyền truy cập vào danh sách lớp học!");
+        }
+
         return classEntityRepository.findById(id);
     }
 

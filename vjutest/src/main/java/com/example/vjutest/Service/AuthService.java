@@ -1,5 +1,7 @@
 package com.example.vjutest.Service;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
@@ -8,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,10 +19,18 @@ import com.example.vjutest.DTO.AuthResponse;
 import com.example.vjutest.DTO.RegisterRequest;
 import com.example.vjutest.Jwt.JwtTokenProvider;
 import com.example.vjutest.Model.Role;
+import com.example.vjutest.Model.Token;
+import com.example.vjutest.Model.Token.TokenType;
+// Ensure no conflicting imports for Token class
 import com.example.vjutest.Model.User;
 import com.example.vjutest.Repository.RoleRepository;
+import com.example.vjutest.Repository.TokenRepository;
 import com.example.vjutest.Repository.UserRepository;
 import com.example.vjutest.User.CustomUserDetails;
+
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 
 @Service
@@ -38,19 +49,22 @@ public class AuthService {
     private AuthenticationManager authenticationManager;
 
     @Autowired
-    private JwtTokenProvider tokenProvider;
+    private JwtTokenProvider jwtTokenProvider;
 
     @Autowired
     private EmailService emailService;
 
-    // 🔹 Tạo mã xác nhận ngẫu nhiên gồm 6 chữ số
+    @Autowired
+    private TokenRepository tokenRepository;
+
+    //Tạo mã xác nhận ngẫu nhiên gồm 6 chữ số
     private String generateVerificationCode() {
         Random random = new Random();
         int code = 100000 + random.nextInt(900000); // Mã 6 chữ số từ 100000 đến 999999
         return String.valueOf(code);
     }
 
-    // 🔹 ĐĂNG KÝ
+    //ĐĂNG KÝ
     public String register(RegisterRequest request) {
         Optional<Role> roleOpt = roleRepository.findByName(request.getRoleName());
         if (roleOpt.isEmpty()) {
@@ -73,11 +87,11 @@ public class AuthService {
                 request.getEmail(),
                 encodedPassword,
                 roleOpt.get(),
-                "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg"
+                "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg",
+                false
         );
 
         user.setVerificationToken(verificationCode);  // Lưu mã xác nhận
-        user.setEnabled(false);  // Mặc định chưa kích hoạt tài khoản
         userRepository.save(user);
 
         // Gửi mã xác nhận qua email
@@ -87,7 +101,7 @@ public class AuthService {
         return "Đăng ký thành công! Kiểm tra email để lấy mã xác nhận.";
     }
 
-    // 🔹 XÁC NHẬN EMAIL
+    //XÁC NHẬN EMAIL
     public String verifyEmail(String email, String verificationCode) {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
@@ -102,38 +116,56 @@ public class AuthService {
         }
 
         // Kích hoạt tài khoản và xóa mã xác nhận
-        user.setEnabled(true);
+        user.setIsEnabled(true);
         user.setVerificationToken(null);
         userRepository.save(user);
 
         return "Tài khoản đã được kích hoạt thành công!";
     }
 
-    // 🔹 ĐĂNG NHẬP
-    public AuthResponse login(AuthRequest request) {
+    //ĐĂNG NHẬP
+    public AuthResponse login(AuthRequest request, HttpServletResponse response) {
         try {
             System.out.println("Đang xác thực user: " + request.getEmail());
+
+            // Xác thực thông tin đăng nhập
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-            // Lấy thông tin người dùng từ Authentication
+
+            // Lấy thông tin user từ kết quả xác thực
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             User userEntity = userDetails.getUser();
-    
-            // Kiểm tra tài khoản đã kích hoạt hay chưa
-            if (!userEntity.isEnabled()) {
-                return new AuthResponse(null, "Tài khoản chưa kích hoạt!");
+
+            // Kiểm tra tài khoản đã kích hoạt chưa
+            if (Boolean.FALSE.equals(userEntity.getIsEnabled())) {
+                throw new RuntimeException("Tài khoản chưa được kích hoạt! Vui lòng kiểm tra email.");
             }
-    
-            // Tạo JWT token
-            String jwt = tokenProvider.generateToken(userDetails);
-            return new AuthResponse(jwt, "Đăng nhập thành công!");
+
+            // Tạo access & refresh token
+            String accessToken = jwtTokenProvider.generateToken(userDetails);
+            String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+
+            // Lưu refresh token vào DB
+            revokeAllUserTokens(userEntity);
+            saveUserToken(userEntity, refreshToken, TokenType.REFRESH);
+            saveUserToken(userEntity, accessToken, TokenType.ACCESS);
+
+            // Đặt refresh token vào cookie
+            Cookie cookie = new Cookie("refreshToken", refreshToken);
+            cookie.setHttpOnly(true);
+            cookie.setPath("/"); // Toàn hệ thống
+            cookie.setMaxAge(7 * 24 * 60 * 60); // 7 ngày
+            response.addCookie(cookie);
+
+            return new AuthResponse(accessToken, "Đăng nhập thành công!");
+
         } catch (Exception e) {
             System.out.println("Lỗi xác thực: " + e.getMessage());
             throw new RuntimeException("Đăng nhập thất bại!");
         }
     }
 
-    // 🔹 QUÊN MẬT KHẨU
+    //QUÊN MẬT KHẨU
     public String forgotPassword(String email) {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) {
@@ -152,7 +184,7 @@ public class AuthService {
         return "Hãy kiểm tra email để đặt lại mật khẩu.";
     }
 
-    // 🔹 ĐẶT LẠI MẬT KHẨU
+    //ĐẶT LẠI MẬT KHẨU
     public String resetPassword(String token, String newPassword) {
         Optional<User> userOpt = userRepository.findByVerificationToken(token);
         if (userOpt.isEmpty()) {
@@ -165,5 +197,114 @@ public class AuthService {
         userRepository.save(user);
 
         return "Mật khẩu đã được đặt lại!";
+    }
+
+    //Đăng xuất
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        // Lấy access token từ header (Authorization)
+        String authHeader = request.getHeader("Authorization");
+        String accessToken = null;
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            accessToken = authHeader.substring(7); // Lấy token sau "Bearer "
+        }
+
+        // Lấy refresh token từ cookie
+        Cookie[] cookies = request.getCookies();
+        String refreshToken = null;
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals("refreshToken")) {
+                    refreshToken = cookie.getValue();
+                    cookie.setMaxAge(0);  // Xóa refresh token cookie
+                    cookie.setPath("/"); // Đảm bảo xóa trên tất cả các path
+                    response.addCookie(cookie);
+                    break;
+                }
+            }
+        }
+
+        // Xóa access token trong DB
+        if (accessToken != null) {
+            Optional<Token> optionalToken = tokenRepository.findByToken(accessToken);
+            if (optionalToken.isPresent()) {
+                Token token = optionalToken.get();
+                token.setIsRevoked(true); // Đánh dấu là revoked
+                token.setIsExpired(true); // Đánh dấu là expired (nếu muốn)
+                tokenRepository.save(token);
+            }
+        }
+
+        // Xóa refresh token trong DB
+        if (refreshToken != null) {
+            Optional<Token> optionalRefreshTokenEntity = tokenRepository.findByToken(refreshToken);
+            if (optionalRefreshTokenEntity.isPresent()) {
+                Token refreshTokenEntity = optionalRefreshTokenEntity.get();
+                refreshTokenEntity.setIsRevoked(true); // Đánh dấu là revoked
+                refreshTokenEntity.setIsExpired(true); // Đánh dấu là expired (nếu muốn)
+                tokenRepository.save(refreshTokenEntity);
+            }
+        }
+    }
+
+
+    //Lấy lại access token
+    public AuthResponse refreshAccessToken(HttpServletRequest request, HttpServletResponse response) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) throw new RuntimeException("Không tìm thấy refresh token");
+
+        String refreshToken = Arrays.stream(cookies)
+            .filter(c -> "refreshToken".equals(c.getName()))
+            .findFirst()
+            .map(Cookie::getValue)
+            .orElse(null);
+
+        if (refreshToken == null) throw new RuntimeException("Refresh token không hợp lệ");
+
+        String email = jwtTokenProvider.extractUsername(refreshToken);
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
+        if (jwtTokenProvider.isExpired(refreshToken)) {
+            throw new RuntimeException("Refresh token đã hết hạn");
+        }
+
+        Optional<Token> tokenOpt = tokenRepository.findByToken(refreshToken);
+        if (tokenOpt.isEmpty() || tokenOpt.get().getIsRevoked()) {
+            throw new RuntimeException("Refresh token đã bị thu hồi hoặc không hợp lệ");
+        }
+
+        // Tạo access token mới
+        UserDetails userDetails = new CustomUserDetails(user);
+        String newAccessToken = jwtTokenProvider.generateToken(userDetails);
+
+        // Xoá các access token cũ
+        List<Token> oldTokens = tokenRepository.findAllByUser(user).stream()
+            .filter(token -> token.getTokenType() == TokenType.ACCESS)
+            .toList();
+        tokenRepository.deleteAll(oldTokens);
+
+        // Lưu access token mới
+        saveUserToken(user, newAccessToken, TokenType.ACCESS);
+
+        return new AuthResponse(newAccessToken, "Access token mới được cấp");
+    }
+
+    private void revokeAllUserTokens(User user) {
+        List<Token> tokens = tokenRepository.findAllByUser(user);
+        for (Token token : tokens) {
+            token.setIsRevoked(true);
+            token.setIsExpired(true);
+        }
+        tokenRepository.saveAll(tokens);
+    }
+
+    public void saveUserToken(User user, String token, TokenType tokenType) {
+        Token newToken = new Token();
+        newToken.setToken(token);
+        newToken.setIsRevoked(false);
+        newToken.setIsExpired(false);
+        newToken.setTokenType(tokenType);
+        newToken.setUser(user);
+        tokenRepository.save(newToken);
     }
 }

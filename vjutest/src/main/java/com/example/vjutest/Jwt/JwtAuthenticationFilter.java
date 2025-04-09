@@ -10,6 +10,9 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.example.vjutest.Model.Token;
+import com.example.vjutest.Model.Token.TokenType;
+import com.example.vjutest.Repository.TokenRepository;
 import com.example.vjutest.Service.CustomUserDetailsService;
 
 import jakarta.servlet.FilterChain;
@@ -26,11 +29,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
+    @Autowired
+    private TokenRepository tokenRepository;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
+
+        String path = request.getServletPath();
         
-        System.out.println("JWT Filter đang chạy cho request: " + request.getRequestURI());
+        if (path.contains("/refresh-token")) {
+            chain.doFilter(request, response);
+            return;
+        }
+        
+        System.out.println("JWT Filter đang chạy cho request: " + path);
 
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
@@ -42,7 +55,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
-        userEmail = jwtTokenProvider.extractEmail(jwt);
+        userEmail = jwtTokenProvider.extractUsername(jwt);
 
         if (userEmail == null) {
             chain.doFilter(request, response);
@@ -55,12 +68,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (SecurityContextHolder.getContext().getAuthentication() == null &&
                 jwtTokenProvider.isTokenValid(jwt, userDetails)) {
 
-                UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                Token tokenFromDb = tokenRepository.findByToken(jwt).orElse(null);
 
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-                System.out.println("Xác thực thành công cho: " + userEmail);
+                // Chỉ xử lý nếu token là ACCESS (không xử lý REFRESH trong filter này)
+                if (tokenFromDb != null && 
+                    tokenFromDb.getTokenType() == TokenType.ACCESS && 
+                    !tokenFromDb.getIsExpired() && 
+                    !tokenFromDb.getIsRevoked()) {
+
+                    UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    System.out.println("Xác thực thành công cho: " + userEmail);
+                } else {
+                    System.out.println("Token không hợp lệ hoặc đã bị thu hồi: " + jwt.substring(0, 10) + "...");
+                }
             }
         } catch (Exception e) {
             System.out.println("Lỗi xác thực JWT: " + e.getMessage());

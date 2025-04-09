@@ -7,12 +7,16 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Getter
 @Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name = "answers",
        uniqueConstraints = { @UniqueConstraint(columnNames = {"question_id", "answer_name"}) }
 )
@@ -50,14 +54,4 @@ public class Answer {
 
     @OneToMany(mappedBy = "answer", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<UserAnswer> userAnswers;
-
-    public Answer() {
-    }
-
-    public Answer(Question question, String answerName, boolean isCorrect, User createdBy) {
-        this.question = question;
-        this.answerName = answerName;
-        this.isCorrect = isCorrect;
-        this.createdBy = createdBy;
-    }
 }
