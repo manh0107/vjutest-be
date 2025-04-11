@@ -24,9 +24,8 @@ public class ExamQuestionMapper {
         ExamQuestionDTO dto = new ExamQuestionDTO();
         dto.setId(examQuestion.getId());
         dto.setPoint(examQuestion.getPoint());
-
         dto.setExam(examQuestion.getExam() != null ? examMapper.toFullDTO(examQuestion.getExam()) : null);
-
+       
         return dto;
     }
 
@@ -38,7 +37,6 @@ public class ExamQuestionMapper {
         ExamQuestionDTO dto = new ExamQuestionDTO();
         dto.setId(examQuestion.getId());
         dto.setPoint(examQuestion.getPoint());
-
         dto.setExam(examQuestion.getExam() != null ? examMapper.toSimpleDTO(examQuestion.getExam()) : null);
         return dto;
     }

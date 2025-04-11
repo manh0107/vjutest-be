@@ -13,11 +13,13 @@ public class ExamMapper {
 
     private final ClassSubjectMapper classSubjectMapper;
     private final SubjectMapper subjectMapper;
+    private final UserMapper userMapper;
 
     @Autowired
-    public ExamMapper(ClassSubjectMapper classSubjectMapper, SubjectMapper subjectMapper) {
+    public ExamMapper(ClassSubjectMapper classSubjectMapper, SubjectMapper subjectMapper, UserMapper userMapper) {
         this.classSubjectMapper = classSubjectMapper;
         this.subjectMapper = subjectMapper;
+        this.userMapper = userMapper;
     }
 
     // Chuyển đổi Exam -> ExamDTO (Đơn giản)
@@ -90,8 +92,7 @@ public class ExamMapper {
 
         // Lấy thông tin người tạo
         if (exam.getCreatedBy() != null) {
-            dto.setCreatedBy(exam.getCreatedBy().getId());
-            dto.setCreatedByName(exam.getCreatedBy().getName());
+            dto.setUser(userMapper.toDTO(exam.getCreatedBy()));
         }
 
         // Lấy thông tin lớp học - môn học chi tiết

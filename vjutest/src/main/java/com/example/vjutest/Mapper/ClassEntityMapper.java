@@ -32,10 +32,11 @@ public class ClassEntityMapper {
         dto.setName(entity.getName());
         dto.setClassCode(entity.getClassCode());
         dto.setDescription(entity.getDescription());
+        dto.setCreatedAt(entity.getCreatedAt());
 
         if (entity.getCreatedBy() != null) {
-            dto.setCreatedBy(entity.getCreatedBy().getId());
-            dto.setCreateByName(entity.getCreatedBy().getName());
+            dto.setCreatedById(entity.getCreatedBy().getId());
+            dto.setCreatedByName(entity.getCreatedBy().getName());
         }
 
         //Lấy đầy đủ thông tin JoinRequest + User gửi request
@@ -72,10 +73,11 @@ public class ClassEntityMapper {
         dto.setName(entity.getName());
         dto.setClassCode(entity.getClassCode());
         dto.setDescription(entity.getDescription());
+        dto.setCreatedAt(entity.getCreatedAt());
 
         if (entity.getCreatedBy() != null) {
-            dto.setCreatedBy(entity.getCreatedBy().getId());
-            dto.setCreateByName(entity.getCreatedBy().getName());
+            dto.setCreatedById(entity.getCreatedBy().getId());
+            dto.setCreatedByName(entity.getCreatedBy().getName());
         }
 
         //Chỉ lấy ID của JoinRequest

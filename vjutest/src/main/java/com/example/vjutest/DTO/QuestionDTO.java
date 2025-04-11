@@ -1,6 +1,7 @@
 package com.example.vjutest.DTO;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -32,7 +33,10 @@ public class QuestionDTO {
     private Long subjectId;
     private String subjectName;
 
-    private SubjectDTO subject;
+    private Long answerId;
+    private String answerName;
 
-    private ExamQuestionDTO examQuestions;
+    private SubjectDTO subject;
+    private List<ExamQuestionDTO> examQuestions;
+    private List<AnswerDTO> answers;
 }

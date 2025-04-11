@@ -1,6 +1,7 @@
 package com.example.vjutest.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,6 +78,7 @@ public class QuestionService {
     }
 
     // Tạo câu hỏi bên trong bài kiểm tra (có thể public hoặc private)
+    @Transactional
     public QuestionDTO createQuestionInExam(Question questionRequest, Long examId, Long userId, Long subjectId) {
         Subject subject = subjectRepository.findById(subjectId)
                 .orElseThrow(() -> new RuntimeException("Môn học không tồn tại!"));
@@ -99,12 +101,10 @@ public class QuestionService {
         question.setCreatedBy(user);
         question.setModifiedBy(user);
         question.setIsPublic(questionRequest.getIsPublic());
-
-        if (Boolean.TRUE.equals(questionRequest.getIsPublic())) {
-            question.setSubject(subject);
-        }
-
+        question.setSubject(subject);
+        
         Question savedQuestion = questionRepository.save(question);
+        List<ExamQuestion> createdExamQuestions = new ArrayList<>();
 
         // Lặp qua các câu hỏi trong bài kiểm tra để tạo ExamQuestion
         if (questionRequest.getExamQuestions() != null && !questionRequest.getExamQuestions().isEmpty()) {
@@ -115,10 +115,11 @@ public class QuestionService {
                     throw new RuntimeException("Điểm của câu hỏi không hợp lệ!");
                 }
 
-                examQuestionService.createExamQuestion(exam, savedQuestion, point);
+                createdExamQuestions.add(examQuestionService.createExamQuestion(exam, savedQuestion, point));
             }
         }
 
+        savedQuestion.setExamQuestions(createdExamQuestions);
         return questionMapper.toFullDTO(savedQuestion);
     }
 

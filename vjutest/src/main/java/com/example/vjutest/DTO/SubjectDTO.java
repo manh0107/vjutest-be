@@ -1,5 +1,6 @@
 package com.example.vjutest.DTO;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -17,7 +18,8 @@ public class SubjectDTO {
     private String subjectCode;
     private String description;
     private Integer creditHour;
-    private Long createdBy;
+    private Long createdById;
     private String createdByName;
+    private LocalDateTime createdAt;
     private List<ExamDTO> exams; 
 }

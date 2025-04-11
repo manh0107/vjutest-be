@@ -19,4 +19,5 @@ public class ExamQuestionDTO {
     private Integer point;
 
     private ExamDTO exam;
+    private QuestionDTO question;
 }

@@ -16,12 +16,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Getter
 @Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name = "questions")
 public class Question {
 
@@ -61,17 +65,7 @@ public class Question {
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ExamQuestion> examQuestions;
 
-    public Question() {
-    }
+    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Answer> answers;
 
-    public Question(String name, Integer difficulty, boolean isPublic, Subject subject, User createdBy, User modifiedBy) {
-        this.name = name;
-        this.difficulty = difficulty;
-        this.isPublic = isPublic;
-        this.subject = subject;
-        this.createdBy = createdBy;
-        this.modifiedBy = modifiedBy;
-        this.createdAt = LocalDateTime.now();
-        this.modifiedAt = LocalDateTime.now();
-    }
 }

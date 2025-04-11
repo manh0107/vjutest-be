@@ -18,14 +18,19 @@ public class ExamQuestionService {
     private final ExamQuestionRepository examQuestionRepository;
 
     public ExamQuestion createExamQuestion(Exam exam, Question question, Integer point) {
-        if (Boolean.FALSE.equals(question.getIsPublic()) && point == null) {
-            throw new RuntimeException("Câu hỏi riêng phải có điểm!");
-        }
-
         ExamQuestion examQuestion = new ExamQuestion();
+        
+        if (Boolean.FALSE.equals(question.getIsPublic())) {
+            if (point == null || point <= 0) {
+                throw new RuntimeException("Câu hỏi riêng phải có điểm lớn hơn 0!");
+            }
+            examQuestion.setPoint(point);
+        } else {
+            examQuestion.setPoint(1); // mặc định cho public
+        }
+        
         examQuestion.setExam(exam);
         examQuestion.setQuestion(question);
-        examQuestion.setPoint(Boolean.TRUE.equals(question.getIsPublic()) ? 1 : point);
         return examQuestionRepository.save(examQuestion);
     }
 }

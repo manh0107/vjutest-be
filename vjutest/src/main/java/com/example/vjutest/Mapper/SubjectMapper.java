@@ -13,7 +13,8 @@ public class SubjectMapper {
         dto.setSubjectCode(subject.getSubjectCode());
         dto.setDescription(subject.getDescription());
         dto.setCreditHour(subject.getCreditHour());
-        dto.setCreatedBy(subject.getCreatedBy().getId()); 
+        dto.setCreatedById(subject.getCreatedBy().getId()); 
+        dto.setCreatedAt(subject.getCreatedAt());
         dto.setCreatedByName(subject.getCreatedBy().getName());
         return dto;
     }

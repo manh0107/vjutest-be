@@ -1,5 +1,9 @@
 package com.example.vjutest.Mapper;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -35,7 +39,10 @@ public class QuestionMapper {
         dto.setCreatedAt(question.getCreatedAt());
         dto.setModifiedAt(question.getModifiedAt());
 
-        // Lấy thông tin người tạo
+        if(question.getAnswers() != null) {
+            
+        }
+
         if (question.getCreatedBy() != null) {
             dto.setCreatedBy(question.getCreatedBy().getId());
             dto.setCreatedByName(question.getCreatedBy().getName());
@@ -60,7 +67,7 @@ public class QuestionMapper {
                     examQuestionDTO.setSubjectName(examQuestion.getQuestion().getName());
                 }
             });
-            dto.setExamQuestions(examQuestionDTO);
+            dto.setExamQuestions(Collections.singletonList(examQuestionDTO));
         }
         
         return dto;
@@ -80,18 +87,16 @@ public class QuestionMapper {
         dto.setCreatedAt(question.getCreatedAt());
         dto.setModifiedAt(question.getModifiedAt());
 
-        // Lấy thông tin người tạo
         if (question.getCreatedBy() != null) {
             dto.setCreatedBy(question.getCreatedBy().getId());
             dto.setCreatedByName(question.getCreatedBy().getName());
         }
 
-        // Lấy thông tin lớp học - môn học chi tiết
         if (question.getExamQuestions() != null) {
-            dto.setExamQuestions(question.getExamQuestions().stream()
+            List<ExamQuestionDTO> examQuestionDTOs = question.getExamQuestions().stream()
                 .map(examQuestionMapper::toFullDTO)
-                .findFirst()
-                .orElse(null));
+                .collect(Collectors.toList());
+            dto.setExamQuestions(examQuestionDTOs);
         }
 
         if (question.getSubject() != null) {

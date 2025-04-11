@@ -40,4 +40,5 @@ public class ExamDTO {
     private String subjectName;
     private ClassSubjectDTO classSubject;
     private SubjectDTO subject;
+    private UserDTO user;
 }
