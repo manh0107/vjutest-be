@@ -1,6 +1,8 @@
 package com.example.vjutest.Controller;
 
 import com.example.vjutest.DTO.ExamDTO;
+import com.example.vjutest.DTO.ResultDTO;
+import com.example.vjutest.DTO.UserAnswerDTO;
 import com.example.vjutest.Model.Exam;
 import com.example.vjutest.Request.UpdateExamStatusRequest;
 import com.example.vjutest.Service.ExamService;
@@ -93,5 +95,58 @@ public class ExamController {
     @GetMapping("/public-exams/{subjectId}")
     public ResponseEntity<List<ExamDTO>> getExamsBySubjectAndUser(@RequestParam Long subjectId, @RequestParam Long userId) {
         return ResponseEntity.ok(examService.getExamsBySubjectAndUser(subjectId, userId));
+    }
+
+    //Sinh viên làm bài kiểm tra
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @PostMapping("/start-exam/{examId}")
+    public ResponseEntity<ResultDTO> startExam(
+            @PathVariable Long examId,
+            @RequestParam Long userId) {
+        ResultDTO result = examService.startExam(examId, userId);
+        return ResponseEntity.ok(result);
+    }
+
+    //Cho phép sinh viên làm lại bài kiểm tra
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @PutMapping("/allow-retake/{examId}")
+    public ResponseEntity<ResultDTO> allowStudentToRetake(
+            @PathVariable Long examId,
+            @RequestParam Long studentId,
+            @RequestParam Long userId) {
+        ResultDTO result = examService.allowStudentToRetake(examId, studentId, userId);
+        return ResponseEntity.ok(result);
+    }
+
+    //Sinh viên chọn đáp án
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @PostMapping("/select-answer/{examId}")
+    public ResponseEntity<UserAnswerDTO> chooseAnswer(
+            @PathVariable Long examId,
+            @RequestParam Long userId,
+            @RequestParam Long questionId,
+            @RequestParam Long answerId) {
+        UserAnswerDTO userAnswer = examService.chooseAnswer(examId, userId, questionId, answerId);
+        return ResponseEntity.ok(userAnswer);
+    }
+
+    //Sinh viên nộp bài kiểm tra
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @PostMapping("/submit-exam/{examId}")
+    public ResponseEntity<ResultDTO> submitExam(
+            @PathVariable Long examId,
+            @RequestParam Long userId) {
+        ResultDTO result = examService.submitExam(examId, userId);
+        return ResponseEntity.ok(result);
+    }
+
+    //Lấy danh sách kết quả cuả sinh viên
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
+    @GetMapping("/results/{examId}")
+    public ResponseEntity<List<ResultDTO>> getResults(
+            @PathVariable Long examId,
+            @RequestParam Long userId) {
+        List<ResultDTO> results = examService.getResults(examId, userId);
+        return ResponseEntity.ok(results);
     }
 }

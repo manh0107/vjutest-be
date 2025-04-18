@@ -42,6 +42,9 @@ public class Question {
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic;
 
+    @Column(name = "is_completed")
+    private Boolean isCompleted = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;

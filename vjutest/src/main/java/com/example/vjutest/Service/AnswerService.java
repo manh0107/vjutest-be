@@ -22,6 +22,7 @@ public class AnswerService {
     private final AnswerRepository answerRepository;
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
+    private final QuestionService questionService;
 
     public List<AnswerDTO> createAnswersForQuestion(Long questionId, Long userId, List<AnswerDTO> answerRequest) {
         Question question = questionRepository.findById(questionId)
@@ -59,6 +60,8 @@ public class AnswerService {
         }).toList();
 
         List<Answer> saved = answerRepository.saveAll(answers);
+        question.setIsCompleted(questionService.checkIfQuestionIsCompleted(question));
+        questionRepository.save(question);
         return saved.stream().map(answerMapper::toSimpleDTO).toList();
     }
 }

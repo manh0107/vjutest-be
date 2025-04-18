@@ -9,11 +9,13 @@ import org.springframework.stereotype.Service;
 
 import com.example.vjutest.DTO.QuestionDTO;
 import com.example.vjutest.Mapper.QuestionMapper;
+import com.example.vjutest.Model.Answer;
 import com.example.vjutest.Model.Exam;
 import com.example.vjutest.Model.ExamQuestion;
 import com.example.vjutest.Model.Question;
 import com.example.vjutest.Model.Subject;
 import com.example.vjutest.Model.User;
+import com.example.vjutest.Repository.AnswerRepository;
 import com.example.vjutest.Repository.ExamQuestionRepository;
 import com.example.vjutest.Repository.ExamRepository;
 import com.example.vjutest.Repository.QuestionRepository;
@@ -33,6 +35,7 @@ public class QuestionService {
     private final UserRepository userRepository;
     private final QuestionMapper questionMapper;
     private final ExamQuestionService examQuestionService;
+    private final AnswerRepository answerRepository;
 
     @Autowired
     public QuestionService(QuestionRepository questionRepository, 
@@ -41,7 +44,8 @@ public class QuestionService {
                            SubjectRepository subjectRepository,
                            UserRepository userRepository, 
                            QuestionMapper questionMapper,
-                           ExamQuestionService examQuestionService) {
+                           ExamQuestionService examQuestionService,
+                           AnswerRepository answerRepository) {
         this.questionRepository = questionRepository;
         this.examRepository = examRepository;
         this.examQuestionRepository = examQuestionRepository;
@@ -49,6 +53,7 @@ public class QuestionService {
         this.userRepository = userRepository;
         this.questionMapper = questionMapper;
         this.examQuestionService = examQuestionService;
+        this.answerRepository = answerRepository;
     }
 
     // Tạo câu hỏi bên ngoài bài kiểm tra (ngân hàng câu hỏi)
@@ -100,7 +105,13 @@ public class QuestionService {
         question.setModifiedAt(LocalDateTime.now());
         question.setCreatedBy(user);
         question.setModifiedBy(user);
-        question.setIsPublic(questionRequest.getIsPublic());
+        
+        if(Boolean.TRUE.equals(exam.getIsPublic())) {
+            question.setIsPublic(true); 
+        } else {
+            question.setIsPublic(questionRequest.getIsPublic());
+        }
+
         question.setSubject(subject);
         
         Question savedQuestion = questionRepository.save(question);
@@ -120,6 +131,10 @@ public class QuestionService {
         }
 
         savedQuestion.setExamQuestions(createdExamQuestions);
+
+        exam.updateMaxScore();
+        examRepository.save(exam);
+        
         return questionMapper.toFullDTO(savedQuestion);
     }
 
@@ -163,6 +178,19 @@ public class QuestionService {
             }
         }
     }
-    
+
+    public boolean checkIfQuestionIsCompleted(Question question) {
+        List<Answer> answers = answerRepository.findByQuestionId(question.getId());
+        if (answers.size() < 2) {
+            return false;
+        }
+
+        long correctAnswersCount = answers.stream()
+                .filter(Answer::getIsCorrect)
+                .count();
+
+        return correctAnswersCount == 1;
+    }
+
 }
 

@@ -3,11 +3,18 @@ package com.example.vjutest.Model;
 import java.time.LocalDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
+@Setter
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name = "results")
 public class Result {
 
@@ -24,41 +31,32 @@ public class Result {
     private Exam exam;
 
     @Column(name = "score", nullable = false)
-    private int score;
+    private Integer score;
 
-    @Column(name = "duration", nullable = false)
-    private Long duration;
+    @Column(name = "duration_time", nullable = false)
+    private Long durationTime;
 
     @CreationTimestamp
     @Column(name = "submitted_at", updatable = false)
     private LocalDateTime submittedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "pass_quit", nullable = false)
-    private Status passQuit;
+    @Column(name = "pass_test", nullable = false)
+    private PassTest passTest;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "modified_by")
-    private User modifiedBy;
+    @Column(name = "allow_retake")
+    private Boolean allowRetake = false;
 
-    @UpdateTimestamp
-    @Column(name = "modified_at")
-    private LocalDateTime modifiedAt;
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
 
-    public Result() {
-    }
+    @Column(name = "ended_at")
+    private LocalDateTime endedAt;
 
-    public Result(User user, Exam exam, int score, Long duration, User modifiedBy) {
-        this.user = user;
-        this.exam = exam;
-        this.score = score;
-        this.duration = duration;
-        this.submittedAt = LocalDateTime.now();
-        this.modifiedBy = modifiedBy;
-        this.modifiedAt = LocalDateTime.now();
-    }
+    @Column(name = "is_submitted", nullable = false)
+    private Boolean isSubmitted = false;
 
-    public enum Status {
+    public enum PassTest {
         PASS, FAIL
     }
 }

@@ -7,12 +7,16 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Setter
 @Getter
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name = "exams")
 public class Exam {
 
@@ -43,8 +47,8 @@ public class Exam {
     @Column(name = "status", nullable = false)
     private Status status;
 
-    @Column(name = "pass_quit", nullable = false, length = 8)
-    private String passQuit;
+    @Column(name = "pass_score", nullable = false)
+    private Integer passScore;
 
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic;
@@ -78,29 +82,17 @@ public class Exam {
     @JoinColumn(name = "subject_id", nullable = false) // Bắt buộc phải có môn học
     private Subject subject;
 
-    public Exam() {
-    }
-
-    public Exam(String name, String examCode, String description, Long durationTime, ClassSubject classSubject, String passQuit, boolean isPublic, LocalDateTime startAt, LocalDateTime endAt, Status status, User createdBy) {
-        this.name = name;
-        this.examCode = examCode;
-        this.description = description;
-        this.durationTime = durationTime;
-        this.classSubject = classSubject;
-        this.passQuit = passQuit;
-        this.isPublic = isPublic;
-        this.startAt = startAt;
-        this.endAt = endAt;
-        this.status = status;
-        this.createdBy = createdBy;
-    }
-
+   
     public enum Status {
         DRAFT, PUBLISHED, CLOSED
     }
 
     public int getTotalQuestions() {
-        return examQuestions != null ? examQuestions.size() : 0;
+        if (examQuestions == null) return 0;
+        return (int) examQuestions.stream()
+                .map(ExamQuestion::getQuestion)
+                .filter(Question::getIsCompleted)
+                .count();
     }
 
     public void updateMaxScore() {
@@ -122,13 +114,4 @@ public class Exam {
             this.examCode = "E-" + this.examCode;
         }
     }
-
-    public boolean isPublic() {
-        return isPublic;
-    }
-    
-    public void setPublic(boolean isPublic) {
-        this.isPublic = isPublic;
-    }
-    
 }

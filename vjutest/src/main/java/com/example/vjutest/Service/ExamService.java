@@ -1,7 +1,11 @@
 package com.example.vjutest.Service;
 
 import com.example.vjutest.DTO.ExamDTO;
+import com.example.vjutest.DTO.ResultDTO;
+import com.example.vjutest.DTO.UserAnswerDTO;
 import com.example.vjutest.Mapper.ExamMapper;
+import com.example.vjutest.Mapper.ResultMapper;
+import com.example.vjutest.Mapper.UserAnswerMapper;
 import com.example.vjutest.Model.*;
 import com.example.vjutest.Repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +27,12 @@ public class ExamService {
     private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
     private final ExamMapper examMapper;
+    private final ResultRepository resultRepository;
+    private final ResultMapper resultMapper;
+    private final UserAnswerRepository userAnswerRepository;
+    private final QuestionRepository questionRepository;
+    private final AnswerRepository answerRepository;
+    private final UserAnswerMapper userAnswerMapper;
 
     @Autowired
     public ExamService(ExamRepository examRepository,
@@ -30,13 +40,25 @@ public class ExamService {
                        ClassSubjectRepository classSubjectRepository,
                        SubjectRepository subjectRepository,
                        UserRepository userRepository,
-                       ExamMapper examMapper) {
+                       ExamMapper examMapper,
+                       ResultRepository resultRepository,
+                       ResultMapper resultMapper,
+                       UserAnswerRepository userAnswerRepository,
+                       QuestionRepository questionRepository,
+                       AnswerRepository answerRepository,
+                       UserAnswerMapper userAnswerMapper) {
         this.examRepository = examRepository;
         this.classEntityRepository = classEntityRepository;
         this.classSubjectRepository = classSubjectRepository;
         this.subjectRepository = subjectRepository;
         this.userRepository = userRepository;
         this.examMapper = examMapper;
+        this.resultRepository = resultRepository;
+        this.resultMapper = resultMapper;
+        this.userAnswerRepository = userAnswerRepository;
+        this.questionRepository = questionRepository;
+        this.answerRepository = answerRepository;
+        this.userAnswerMapper = userAnswerMapper;
     }
 
     //Tạo bài kiểm tra trong lớp học
@@ -69,8 +91,13 @@ public class ExamService {
         exam.setName(examRequest.getName());
         exam.setExamCode(examRequest.getExamCode() != null ? examRequest.getExamCode() : "E-" + subjectId + "-" + System.currentTimeMillis());
         exam.setDescription(examRequest.getDescription());
+        
         exam.setDurationTime(examRequest.getDurationTime());
-        exam.setPassQuit(examRequest.getPassQuit());
+        if (examRequest.getDurationTime() < 0) {
+            throw new RuntimeException("Thời gian làm bài không hợp lệ!");
+        }
+
+        exam.setPassScore(examRequest.getPassScore());
         exam.setIsPublic(examRequest.getIsPublic());
 
         LocalDateTime now = LocalDateTime.now();
@@ -173,16 +200,30 @@ public class ExamService {
             throw new RuntimeException("Bạn không có quyền cập nhật bài kiểm tra này!");
         }
 
-        if (newStatus == Exam.Status.PUBLISHED) {
-            if (startAt == null || startAt.isBefore(exam.getCreatedAt().plusDays(1))) {
-                throw new RuntimeException("Thời gian bắt đầu phải cách thời gian tạo ít nhất 1 ngày!");
-            }            
-            if (endAt == null || endAt.isBefore(startAt.plusMinutes(30))) {
-                throw new RuntimeException("Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 30 phút!");
-            }            
-            exam.setStartAt(startAt);
-            exam.setEndAt(endAt);
+        if(exam.getTotalQuestions() <= 10) {
+            throw new RuntimeException("Bài kiểm tra phải có ít nhất 10 câu hỏi!");
         }
+
+        if (newStatus == Exam.Status.PUBLISHED) {
+            boolean hasIncomplete = exam.getExamQuestions().stream()
+            .map(ExamQuestion::getQuestion)
+            .anyMatch(q -> !Boolean.TRUE.equals(q.getIsCompleted()));
+
+            if (hasIncomplete) {
+                throw new RuntimeException("Không thể hoàn thành: Có câu hỏi chưa hoàn thành (chưa có đáp án đầy đủ)!");
+            }
+            
+            if(Boolean.FALSE.equals(exam.getIsPublic())) {
+                if (startAt == null || startAt.isBefore(exam.getCreatedAt().plusDays(1))) {
+                    throw new RuntimeException("Thời gian bắt đầu phải cách thời gian tạo ít nhất 1 ngày!");
+                }                     
+                exam.setStartAt(startAt);
+                exam.setEndAt(startAt.plusMinutes(exam.getDurationTime()));
+            } else {
+                exam.setStartAt(LocalDateTime.MIN);
+                exam.setEndAt(LocalDateTime.MAX);
+            } 
+        } 
 
         exam.setStatus(newStatus);
         exam.setModifiedAt(LocalDateTime.now());
@@ -209,8 +250,13 @@ public class ExamService {
         exam.setName(examRequest.getName());
         exam.setExamCode(examRequest.getExamCode() != null ? examRequest.getExamCode() : "E-" + subjectId + "-" + System.currentTimeMillis());
         exam.setDescription(examRequest.getDescription());
+
         exam.setDurationTime(examRequest.getDurationTime());
-        exam.setPassQuit(examRequest.getPassQuit());
+        if (examRequest.getDurationTime() < 0) {
+            throw new RuntimeException("Thời gian làm bài không hợp lệ!");
+        }
+
+        exam.setPassScore(examRequest.getPassScore());
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -218,7 +264,7 @@ public class ExamService {
         exam.setClassSubject(null);
         exam.setSubject(subject);
 
-        exam.setPublic(true);
+        exam.setIsPublic(true);
 
         // Mặc định ở trạng thái DRAFT
         exam.setStatus(Exam.Status.DRAFT);
@@ -265,4 +311,201 @@ public class ExamService {
     
         return exams.stream().map(examMapper::toSimpleDTO).collect(Collectors.toList());
     }
+
+    //Sinh viên vào làm bài kiểm tra
+    @Transactional
+    public ResultDTO startExam(Long examId, Long studentId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Bài kiểm tra không tồn tại"));
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+
+        if (!student.getRole().getName().equals("student")) {
+            throw new RuntimeException("Chỉ sinh viên mới có thể làm bài kiểm tra!");
+        }
+
+        if (exam.getStatus() != Exam.Status.PUBLISHED) {
+            throw new RuntimeException("Bài kiểm tra chưa được công bố!");
+        }
+
+        Optional<Result> existingResultOpt = resultRepository.findByUserIdAndExamId(studentId, examId);
+        
+        if (existingResultOpt.isPresent()) {
+            Result existingResult = existingResultOpt.get();
+            if (!Boolean.TRUE.equals(existingResult.getAllowRetake())) {
+                throw new RuntimeException("Bạn đã bắt đầu bài kiểm tra này rồi!");
+            } else {
+                // Reset trạng thái cho phép làm lại sau khi dùng
+                existingResult.setAllowRetake(false);
+                resultRepository.save(existingResult);
+            }
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = now;
+        LocalDateTime endTime;
+
+        if (Boolean.TRUE.equals(exam.getIsPublic())) {
+            endTime = now.plusMinutes(exam.getDurationTime());
+        } else {
+            LocalDateTime examStart = exam.getStartAt();
+            LocalDateTime examEnd = exam.getEndAt();
+            int delayAllowedMinutes = 5;
+            LocalDateTime latestAllowedStart = examStart.plusMinutes(delayAllowedMinutes);
+
+            if (now.isBefore(examStart)) {
+                throw new RuntimeException("Chưa đến thời gian bắt đầu làm bài!");
+            }
+
+            if (now.isAfter(latestAllowedStart)) {
+                throw new RuntimeException("Bạn đã vào trễ quá 5 phút, không thể làm bài!");
+            }
+
+            if (now.isAfter(examEnd)) {
+                throw new RuntimeException("Bài kiểm tra đã kết thúc!");
+            }
+
+            long minutesLate = java.time.Duration.between(examStart, now).toMinutes();
+            long remainingTime = exam.getDurationTime() - minutesLate;
+
+            if (remainingTime <= 0) {
+                throw new RuntimeException("Không còn đủ thời gian để làm bài!");
+            }
+
+            endTime = now.plusMinutes(remainingTime);
+        }
+
+        Result result = new Result();
+        result.setUser(student);
+        result.setExam(exam);
+        result.setStartedAt(startTime);
+        result.setEndedAt(endTime);
+        result.setIsSubmitted(false);
+        result.setScore(0);
+        result.setPassTest(Result.PassTest.FAIL);
+        result.setAllowRetake(false); // Mặc định không được làm lại nữa
+
+        return resultMapper.toFullDTO(resultRepository.save(result));
+    }
+
+    //Cho phép sinh viên làm lại bài kiểm tra
+    @Transactional
+    public ResultDTO allowStudentToRetake(Long examId, Long studentId, Long userId) {
+        Result result = resultRepository.findByUserIdAndExamId(studentId, examId)
+            .orElseThrow(() -> new RuntimeException("Sinh viên chưa từng làm bài này"));
+
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+        
+        if(!user.getRole().getName().equals("admin") && !user.getRole().getName().equals("teacher")) {
+            throw new RuntimeException("Chỉ admin hoặc giáo viên mới có quyền cho phép làm lại bài kiểm tra");
+        }
+
+        result.setAllowRetake(true);
+        return resultMapper.toFullDTO(resultRepository.save(result));
+    }
+
+    //Sinh viên chọn đáp án
+    @Transactional
+    public UserAnswerDTO chooseAnswer(Long examId, Long studentId, Long questionId, Long answerId) {
+        // Kiểm tra sinh viên và bài kiểm tra
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sinh viên"));
+
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
+
+        Question question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy câu hỏi"));
+
+        Answer answer = answerRepository.findById(answerId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đáp án"));
+
+        // Kiểm tra nếu sinh viên đã bắt đầu bài thi
+        Result result = resultRepository.findByExamAndUser(exam, student)
+                .orElseThrow(() -> new RuntimeException("Sinh viên chưa bắt đầu bài kiểm tra"));
+
+        if (result.getIsSubmitted()) {
+            throw new IllegalStateException("Bài thi đã được nộp, không thể thay đổi đáp án");
+        }
+
+        // Kiểm tra nếu đã chọn đáp án cho câu hỏi này
+        UserAnswer userAnswer = userAnswerRepository.findByExamAndUserAndQuestion(exam, student, question)
+                .orElse(new UserAnswer());
+
+        userAnswer.setUser(student);
+        userAnswer.setExam(exam);
+        userAnswer.setQuestion(question);
+        userAnswer.setAnswer(answer);
+        userAnswer.setResult(result); 
+        userAnswer.setIsSubmitted(false); // Đánh dấu là chưa nộp
+
+        // Lưu đáp án tạm thời
+        return userAnswerMapper.toDTO(userAnswerRepository.save(userAnswer));
+    }
+
+    //Nộp bài kiểm tra
+    @Transactional
+    public ResultDTO submitExam(Long examId, Long studentId) {
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sinh viên!"));
+
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra!"));
+
+        if (!student.getRole().getName().equals("student")) {
+            throw new RuntimeException("Chỉ sinh viên mới có thể nộp bài kiểm tra!");
+        }
+
+        if (exam.getStatus() != Exam.Status.PUBLISHED) {
+            throw new RuntimeException("Bài kiểm tra chưa được công bố!");
+        }
+
+        Result result = resultRepository.findByExamAndUser(exam, student)
+                .orElseThrow(() -> new RuntimeException("Sinh viên chưa bắt đầu bài kiểm tra"));
+
+        if (result.getIsSubmitted()) {
+            throw new IllegalStateException("Bài thi đã được nộp trước đó");
+        }
+
+        List<UserAnswer> userAnswers = userAnswerRepository.findByExamAndUser(exam, student);
+
+        int totalScore = 0;
+        List<ExamQuestion> examQuestions = exam.getExamQuestions();
+
+        for (ExamQuestion eq : examQuestions) {
+            Question question = eq.getQuestion();
+            int point = eq.getPoint();
+
+            boolean isCorrect = userAnswers.stream().anyMatch(ua ->
+                    ua.getQuestion().getId().equals(question.getId()) &&
+                    ua.getAnswer().getIsCorrect());
+
+            if (isCorrect) {
+                totalScore += point;
+            }
+        }
+
+        // Cập nhật điểm và nộp bài
+        result.setScore(totalScore);
+        result.setIsSubmitted(true);
+        result.setSubmittedAt(LocalDateTime.now());
+        result.setPassTest(totalScore >= exam.getPassScore() ? Result.PassTest.PASS : Result.PassTest.FAIL);
+
+        // Cập nhật lại trạng thái của các đáp án
+        userAnswers.forEach(userAnswer -> {
+            userAnswer.setIsSubmitted(true);  // Đánh dấu là đã nộp
+            userAnswerRepository.save(userAnswer);
+        });
+
+        return resultMapper.toFullDTO(resultRepository.save(result));
+    }
+
+    //Lấy danh sách kết quả của sinh viên
+    public List<ResultDTO> getResults(Long studentId, Long examId) {
+        List<Result> results = resultRepository.findByUserIdAndIsSubmittedTrue(studentId);
+        return results.stream()
+                .map(resultMapper::toSimpleDTO) 
+                .collect(Collectors.toList());
+    }   
 }

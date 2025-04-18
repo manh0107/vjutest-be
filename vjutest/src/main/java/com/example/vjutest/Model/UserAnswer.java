@@ -3,11 +3,9 @@ package com.example.vjutest.Model;
 import java.time.LocalDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -46,15 +44,10 @@ public class UserAnswer {
     @JoinColumn(name = "result_id", nullable = false)
     private Result result;
 
+    @Column(name = "is_submitted", nullable = false)
+    private Boolean isSubmitted = false;
+
     @CreationTimestamp 
     @Column(name = "create_at", updatable = false)
     private LocalDateTime createAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "modified_by")
-    private User modifiedBy;
-
-    @UpdateTimestamp 
-    @Column(name = "modified_at")
-    private LocalDateTime modifiedAt;
 }

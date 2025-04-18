@@ -36,12 +36,9 @@ public class QuestionMapper {
         dto.setName(question.getName());
         dto.setDifficulty(question.getDifficulty());
         dto.setIsPublic(question.getIsPublic());
+        dto.setIsCompleted(question.getIsCompleted());
         dto.setCreatedAt(question.getCreatedAt());
         dto.setModifiedAt(question.getModifiedAt());
-
-        if(question.getAnswers() != null) {
-            
-        }
 
         if (question.getCreatedBy() != null) {
             dto.setCreatedBy(question.getCreatedBy().getId());
@@ -84,6 +81,7 @@ public class QuestionMapper {
         dto.setName(question.getName());
         dto.setDifficulty(question.getDifficulty());
         dto.setIsPublic(question.getIsPublic());
+        dto.setIsCompleted(question.getIsCompleted());
         dto.setCreatedAt(question.getCreatedAt());
         dto.setModifiedAt(question.getModifiedAt());
 

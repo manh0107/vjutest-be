@@ -22,6 +22,9 @@ public class QuestionDTO {
     @JsonProperty("isPublic")
     private Boolean isPublic;
 
+    @JsonProperty("isCompleted")
+    private Boolean isCompleted;
+
     private LocalDateTime createdAt;
     private LocalDateTime modifiedAt;
 
