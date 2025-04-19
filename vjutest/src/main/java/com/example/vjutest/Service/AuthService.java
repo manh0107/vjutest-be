@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 import com.example.vjutest.DTO.AuthRequest;
 import com.example.vjutest.DTO.AuthResponse;
 import com.example.vjutest.DTO.RegisterRequest;
+import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.Jwt.JwtTokenProvider;
+import com.example.vjutest.Mapper.UserMapper;
 import com.example.vjutest.Model.Role;
 import com.example.vjutest.Model.Token;
 import com.example.vjutest.Model.Token.TokenType;
@@ -56,6 +58,9 @@ public class AuthService {
 
     @Autowired
     private TokenRepository tokenRepository;
+
+    @Autowired
+    private UserMapper userMapper;
 
     //Tạo mã xác nhận ngẫu nhiên gồm 6 chữ số
     private String generateVerificationCode() {
@@ -306,5 +311,21 @@ public class AuthService {
         newToken.setTokenType(tokenType);
         newToken.setUser(user);
         tokenRepository.save(newToken);
+    }
+
+    //Lấy thông tin người dùng khi đăng nhập thành công
+    public UserDTO getUserInfo(Authentication authentication) {
+        if(authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Người dùng chưa đăng nhập!");
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        User user = userDetails.getUser();
+        
+        // Sử dụng phương thức với collections để lấy đầy đủ thông tin
+        User userWithCollections = userRepository.findById(user.getId())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+            
+        return userMapper.toDTO(userWithCollections);
     }
 }

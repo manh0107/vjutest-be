@@ -44,7 +44,7 @@ public class ExamMapper {
 
         // Lấy thông tin người tạo
         if (exam.getCreatedBy() != null) {
-            dto.setCreatedBy(exam.getCreatedBy().getId());
+            dto.setCreatedById(exam.getCreatedBy().getId());
             dto.setCreatedByName(exam.getCreatedBy().getName());
         }
 

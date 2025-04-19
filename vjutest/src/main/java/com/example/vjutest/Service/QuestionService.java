@@ -191,6 +191,5 @@ public class QuestionService {
 
         return correctAnswersCount == 1;
     }
-
 }
 

@@ -7,15 +7,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class SubjectMapper {
     public SubjectDTO toDTO(Subject subject) {
+        if (subject == null) return null;
+
         SubjectDTO dto = new SubjectDTO();
         dto.setId(subject.getId());
         dto.setName(subject.getName());
         dto.setSubjectCode(subject.getSubjectCode());
         dto.setDescription(subject.getDescription());
         dto.setCreditHour(subject.getCreditHour());
-        dto.setCreatedById(subject.getCreatedBy().getId()); 
         dto.setCreatedAt(subject.getCreatedAt());
-        dto.setCreatedByName(subject.getCreatedBy().getName());
+
+        if (subject.getCreatedBy() != null) {
+            dto.setCreatedById(subject.getCreatedBy().getId());
+            dto.setCreatedByName(subject.getCreatedBy().getName());
+        }
+
         return dto;
     }
 }

@@ -9,6 +9,8 @@ import com.example.vjutest.DTO.RegisterRequest;
 import com.example.vjutest.Service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.Authentication;
+import com.example.vjutest.DTO.UserDTO;
 
 @RestController
 @RequestMapping("/auth")
@@ -72,5 +74,11 @@ public class AuthController {
     public ResponseEntity<String> logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(request, response);
         return ResponseEntity.ok("Đăng xuất thành công!");
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> getCurrentUser(Authentication authentication) {
+        UserDTO userDTO = authService.getUserInfo(authentication);
+        return ResponseEntity.ok(userDTO);
     }
 }

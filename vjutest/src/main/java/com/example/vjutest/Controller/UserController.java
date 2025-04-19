@@ -1,7 +1,6 @@
 package com.example.vjutest.Controller;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -9,7 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.vjutest.DTO.UserDTO;
-import com.example.vjutest.Mapper.UserMapper;
 import com.example.vjutest.Model.User;
 import com.example.vjutest.Service.UserService;
 
@@ -19,12 +17,10 @@ import com.example.vjutest.Service.UserService;
 public class UserController {
 
     private final UserService userService;
-    private final UserMapper userMapper;
 
     @Autowired
-    public UserController(UserService userService, UserMapper userMapper) {
+    public UserController(UserService userService) {
         this.userService = userService;
-        this.userMapper = userMapper;
     }
 
     @PreAuthorize("hasRole('ROLE_ADMIN')")
@@ -32,8 +28,8 @@ public class UserController {
     public ResponseEntity<?> createUser(@RequestBody User user, @RequestParam Long userId) {
         try {
             user.setImage("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg"); 
-            User createdUser = userService.createUser(user, userId);
-            return ResponseEntity.ok(userMapper.toDTO(createdUser));
+            UserDTO createdUser = userService.createUser(user, userId);
+            return ResponseEntity.ok(createdUser);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -43,8 +39,8 @@ public class UserController {
     @PutMapping("/update/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user, @RequestParam Long userId) {
         try {
-            User updatedUser = userService.updateUser(id, user, userId);
-            return ResponseEntity.ok(userMapper.toDTO(updatedUser));
+            UserDTO updatedUser = userService.updateUser(id, user, userId);
+            return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -64,27 +60,27 @@ public class UserController {
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @GetMapping("/all")
     public ResponseEntity<List<UserDTO>> getAllSubjects(@RequestParam Long userId) {
-        List<User> users = userService.getAllUsers(userId);
-        List<UserDTO> userDTOs = users.stream()
-                .map(userMapper::toDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(userDTOs);
+        List<UserDTO> users = userService.getAllUsers(userId);
+        return ResponseEntity.ok(users);
     }
 
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @GetMapping("/find/{id}")
-    public ResponseEntity<?> getSubjectById(@PathVariable Long id, @RequestParam Long userId) {
-        return userService.getUserById(id, userId)
-                .map(user -> ResponseEntity.ok(userMapper.toDTO(user)))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> getUserById(@PathVariable Long id, @RequestParam Long userId) {
+        try {
+            UserDTO userDTO = userService.getUserById(id, userId);
+            return ResponseEntity.ok(userDTO);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PreAuthorize("hasRole('ROLE_USER') or hasRole('ROLE_TEACHER')")
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(@RequestParam Long userId) {
         try {
-            User user = userService.getProfile(userId);
-            return ResponseEntity.ok(userMapper.toDTO(user));
+            UserDTO user = userService.getProfile(userId);
+            return ResponseEntity.ok(user);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -94,8 +90,8 @@ public class UserController {
     @PutMapping("/update/profile")
     public ResponseEntity<?> updateProfile(@RequestParam Long userId, @RequestBody User user) {
         try {
-            User updatedUser = userService.updateProfile(userId, user);
-            return ResponseEntity.ok(userMapper.toDTO(updatedUser));
+            UserDTO updatedUser = userService.updateProfile(userId, user);
+            return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

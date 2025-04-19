@@ -200,7 +200,7 @@ public class ExamService {
             throw new RuntimeException("Bạn không có quyền cập nhật bài kiểm tra này!");
         }
 
-        if(exam.getTotalQuestions() <= 10) {
+        if(exam.getTotalQuestions() < 10) {
             throw new RuntimeException("Bài kiểm tra phải có ít nhất 10 câu hỏi!");
         }
 

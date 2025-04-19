@@ -31,7 +31,7 @@ public class ExamDTO {
     private LocalDateTime createdAt;
     private LocalDateTime modifiedAt;
 
-    private Long createdBy;
+    private Long createdById;
     private String createdByName;
 
     private Long classId;
