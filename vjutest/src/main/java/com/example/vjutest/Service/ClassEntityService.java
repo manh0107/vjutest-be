@@ -176,7 +176,7 @@ public class ClassEntityService {
         User invitee = userRepository.findById(inviteeId)
                 .orElseThrow(() -> new RuntimeException("Giáo viên được mời không tồn tại"));
 
-        if (!classEntity.isTeacherOfClass(inviter)) {
+        if (!classEntity.isTeacherOfClass(inviter) || !inviter.getRole().getName().equalsIgnoreCase("admin")) {
             throw new RuntimeException("Bạn không có quyền mời giáo viên vào lớp này");
         }
 
