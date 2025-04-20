@@ -6,13 +6,13 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.vjutest.DTO.SubjectDTO;
@@ -36,7 +36,8 @@ public class SubjectController {
 
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create")
-    public ResponseEntity<?> createSubject(@RequestParam Long userId, @RequestBody Subject subject) {
+    public ResponseEntity<?> createSubject(Authentication authentication, @RequestBody Subject subject) {
+        Long userId = Long.parseLong(authentication.getName());
         try {
             Subject createdSubject = subjectService.createSubject(subject
                     .getName(), subject.getSubjectCode(), subject.getDescription(), subject.getCreditHour(), userId);

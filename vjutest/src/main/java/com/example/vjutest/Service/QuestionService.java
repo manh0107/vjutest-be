@@ -3,10 +3,12 @@ package com.example.vjutest.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.example.vjutest.DTO.ExamQuestionDTO;
 import com.example.vjutest.DTO.QuestionDTO;
 import com.example.vjutest.Mapper.QuestionMapper;
 import com.example.vjutest.Model.Answer;
@@ -22,10 +24,10 @@ import com.example.vjutest.Repository.QuestionRepository;
 import com.example.vjutest.Repository.SubjectRepository;
 import com.example.vjutest.Repository.UserRepository;
 
-import jakarta.transaction.Transactional;
-
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class QuestionService {
 
     private final QuestionRepository questionRepository;
@@ -36,25 +38,6 @@ public class QuestionService {
     private final QuestionMapper questionMapper;
     private final ExamQuestionService examQuestionService;
     private final AnswerRepository answerRepository;
-
-    @Autowired
-    public QuestionService(QuestionRepository questionRepository, 
-                           ExamRepository examRepository, 
-                           ExamQuestionRepository examQuestionRepository,
-                           SubjectRepository subjectRepository,
-                           UserRepository userRepository, 
-                           QuestionMapper questionMapper,
-                           ExamQuestionService examQuestionService,
-                           AnswerRepository answerRepository) {
-        this.questionRepository = questionRepository;
-        this.examRepository = examRepository;
-        this.examQuestionRepository = examQuestionRepository;
-        this.subjectRepository = subjectRepository;
-        this.userRepository = userRepository;
-        this.questionMapper = questionMapper;
-        this.examQuestionService = examQuestionService;
-        this.answerRepository = answerRepository;
-    }
 
     // Tạo câu hỏi bên ngoài bài kiểm tra (ngân hàng câu hỏi)
     public QuestionDTO createQuestion(Question questionRequest, Long userId, Long subjectId) {
@@ -190,6 +173,106 @@ public class QuestionService {
                 .count();
 
         return correctAnswersCount == 1;
+    }
+
+    @Transactional
+    public QuestionDTO updateBankQuestion(Long id, QuestionDTO questionRequest, Long userId) {
+        Question question = questionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy câu hỏi"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        if (!question.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
+            throw new RuntimeException("Bạn không có quyền cập nhật câu hỏi này");
+        }
+
+        question.setName(questionRequest.getName());
+        question.setDifficulty(questionRequest.getDifficulty());
+        question.setModifiedAt(LocalDateTime.now());
+        question.setModifiedBy(user);
+        // Không cần xử lý isPublic ở đây vì đã mặc định là true
+
+        question = questionRepository.save(question);
+        return questionMapper.toFullDTO(question);
+    }
+
+    @Transactional
+    public QuestionDTO updateQuestionInExam(Long id, QuestionDTO questionRequest, Long userId, Long examId) {
+        Question question = questionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy câu hỏi"));
+
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        if (!exam.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
+            throw new RuntimeException("Bạn không có quyền sửa câu hỏi này trong bài kiểm tra");
+        }
+
+        question.setName(questionRequest.getName());
+        question.setDifficulty(questionRequest.getDifficulty());
+        question.setModifiedAt(LocalDateTime.now());
+        question.setModifiedBy(user);
+
+        if (Boolean.TRUE.equals(exam.getIsPublic())) {
+            question.setIsPublic(true);
+        } else {
+            question.setIsPublic(false); // Giữ private
+        }
+
+        Question savedQuestion = questionRepository.save(question);
+        List<ExamQuestion> createdExamQuestions = new ArrayList<>();
+
+        // Lặp qua các câu hỏi trong bài kiểm tra để tạo ExamQuestion
+        if (questionRequest.getExamQuestions() != null && !questionRequest.getExamQuestions().isEmpty()) {
+            for (ExamQuestionDTO examQuestionDTO : questionRequest.getExamQuestions()) {
+                Integer point = examQuestionDTO.getPoint();
+                if (point == null || point <= 0) {
+                    throw new RuntimeException("Điểm của câu hỏi không hợp lệ!");
+                }
+
+                createdExamQuestions.add(examQuestionService.createExamQuestion(exam, savedQuestion, point));
+            }
+        }
+
+        savedQuestion.setExamQuestions(createdExamQuestions);
+
+        exam.updateMaxScore();
+        examRepository.save(exam);
+
+        return questionMapper.toFullDTO(question);
+    }
+
+
+    @Transactional
+    public void deleteQuestion(Long id, Long userId) {
+        Question question = questionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy câu hỏi"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        if (!question.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
+            throw new RuntimeException("Bạn không có quyền xóa câu hỏi này");
+        }
+
+        questionRepository.delete(question);
+    }
+
+    public List<QuestionDTO> getQuestionsByExam(Long examId, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        if (!user.getRole().getName().equals("teacher") && !user.getRole().getName().equals("admin")) {
+            throw new RuntimeException("Bạn không có quyền xem câu hỏi của bài kiểm tra này");
+        }
+
+        return questionRepository.findAllByExamQuestions_Exam_Id(examId).stream()
+                .map(questionMapper::toSimpleDTO)
+                .collect(Collectors.toList());
     }
 }
 

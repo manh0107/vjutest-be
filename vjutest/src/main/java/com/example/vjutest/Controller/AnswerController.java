@@ -2,34 +2,46 @@ package com.example.vjutest.Controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 
 import com.example.vjutest.DTO.AnswerDTO;
 import com.example.vjutest.Service.AnswerService;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
-@RequestMapping("/answers")
+@RequestMapping("/api/answers")
+@RequiredArgsConstructor
 public class AnswerController {
 
     private final AnswerService answerService;
 
-    @Autowired
-    public AnswerController(AnswerService answerService) {
-        this.answerService = answerService;
-    }
-
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create")
     public ResponseEntity<List<AnswerDTO>> createAnswer(
         @RequestParam Long questionId,
-        @RequestParam Long userId,
+        Authentication authentication,
         @RequestBody List<AnswerDTO> answerRequest ) {
+        Long userId = Long.parseLong(authentication.getName());
         List<AnswerDTO> answer = answerService.createAnswersForQuestion(questionId, userId, answerRequest);
         return ResponseEntity.ok(answer);
+    }
+
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @PutMapping("/update/{id}")
+    public ResponseEntity<AnswerDTO> updateAnswer(@PathVariable Long id, @RequestBody AnswerDTO answerRequest, Authentication authentication, @RequestParam Long questionId) {
+        Long userId = Long.parseLong(authentication.getName());
+        return ResponseEntity.ok(answerService.updateAnswer(id, answerRequest, userId, questionId));
+    }
+
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteAnswer(@PathVariable Long id, Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
+        answerService.deleteAnswer(id, userId);
+        return ResponseEntity.ok().build();
     }
 }

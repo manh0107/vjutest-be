@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,23 +38,27 @@ public class ClassEntityController {
         this.classEntityMapper = classEntityMapper;
     }
 
-    //Tạo lớp học
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create")
-    public ResponseEntity<?> createClass(@RequestParam Long userId, @RequestBody ClassEntity classEntity) {
+    public ResponseEntity<?> createClass(@RequestBody ClassEntity classEntity, Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         try {
-            ClassEntity createdClass = classEntityService.createClass(classEntity
-                    .getName(), classEntity.getClassCode(), classEntity.getDescription(), userId);
+            ClassEntity createdClass = classEntityService.createClass(
+                classEntity.getName(),
+                classEntity.getClassCode(),
+                classEntity.getDescription(),
+                userId
+            );
             return ResponseEntity.ok(classEntityMapper.toFullDTO(createdClass));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    //Lấy danh sách lớp học
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER' or hasRole('ROLE_STUDENT'))")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER', 'ROLE_STUDENT')")
     @GetMapping("/all")
-    public ResponseEntity<List<ClassEntityDTO>> getAllClasses(@RequestParam Long userId) {
+    public ResponseEntity<List<ClassEntityDTO>> getAllClasses(Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         List<ClassEntity> classes = classEntityService.getAllClasses(userId);
         List<ClassEntityDTO> classDTOs = classes.stream()
                 .map(classEntityMapper::toSimpleDTO)
@@ -61,60 +66,62 @@ public class ClassEntityController {
         return ResponseEntity.ok(classDTOs);
     }
 
-    //Lấy chi tiết lớp học
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER')")
     @GetMapping("/find/{id}")
-    public ResponseEntity<?> getClassById(@PathVariable Long id, @RequestParam Long userId) {
+    public ResponseEntity<?> getClassById(@PathVariable Long id, Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         return classEntityService.getClassById(id, userId)
                 .map(classEntity -> ResponseEntity.ok(classEntityMapper.toFullDTO(classEntity)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    //Cập nhật lớp học
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER')")
     @PutMapping("/update/{id}")
     public ResponseEntity<ClassEntityDTO> updateClass(
             @PathVariable Long id,
             @RequestBody ClassEntity classEntity,
-            @RequestParam Long userId) {
+            Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         ClassEntity updatedClass = classEntityService.updateClass(id, classEntity, userId);
         return ResponseEntity.ok(classEntityMapper.toSimpleDTO(updatedClass));
     }
 
-    //Xóa lớp học
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER')")
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> deleteClass(@PathVariable Long id, @RequestParam Long userId) {
+    public ResponseEntity<String> deleteClass(@PathVariable Long id, Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         classEntityService.deleteClass(id, userId);
         return ResponseEntity.ok("Lớp học đã được xóa!");
     }
 
-    //Thêm sinh viên vào lớp
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER')")
     @PostMapping("/{classId}/add-student")
     public ResponseEntity<String> addStudentToClass(
             @PathVariable Long classId,
             @RequestParam Long studentId,
-            @RequestParam Long userId) {
+            Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         classEntityService.addStudentToClass(classId, studentId, userId);
         return ResponseEntity.ok("Học sinh đã được thêm vào lớp!");
     }
 
-    //Mời giáo viên vào lớp
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER')")
     @PostMapping("/{classId}/invite-teacher")
     public ResponseEntity<String> inviteTeacher(
             @PathVariable Long classId,
-            @RequestParam Long inviterId,
-            @RequestParam Long inviteeId) {
+            @RequestParam Long inviteeId,
+            Authentication authentication) {
+        Long inviterId = Long.parseLong(authentication.getName());
         classEntityService.inviteTeacher(classId, inviterId, inviteeId);
         return ResponseEntity.ok("Giáo viên đã được mời vào lớp!");
     }
 
-    //Sinh viên yêu cầu tham gia lớp
     @PreAuthorize("hasRole('ROLE_STUDENT')")
     @PostMapping("/request")
-    public ResponseEntity<?> requestToJoin(@RequestParam Long studentId, @RequestParam Long classId) {
+    public ResponseEntity<?> requestToJoin(
+            @RequestParam Long classId,
+            Authentication authentication) {
+        Long studentId = Long.parseLong(authentication.getName());
         try {
             String message = classEntityService.requestToJoin(studentId, classId);
             return ResponseEntity.ok(message);
@@ -123,37 +130,35 @@ public class ClassEntityController {
         }
     }
 
-    //Sinh viên rời khỏi lớp
     @PreAuthorize("hasRole('ROLE_STUDENT')") 
-    @DeleteMapping("/{classId}/leave/{studentId}")
+    @DeleteMapping("/{classId}/leave")
     public ResponseEntity<String> leaveClass (
             @PathVariable Long classId,
-            @PathVariable Long studentId) {
+            Authentication authentication) {
+        Long studentId = Long.parseLong(authentication.getName());
         classEntityService.leaveClass(classId, studentId);
         return ResponseEntity.ok("Bạn đã rời khỏi lớp học thành công!");
     }
 
-    //Xóa sinh viên khỏi lớp
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER')")
     @DeleteMapping("/{classId}/remove-student")
     public ResponseEntity<String> removeStudentFromClass(
             @PathVariable Long classId,
             @RequestParam Long studentId,
-            @RequestParam Long userId) {
+            Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         classEntityService.removeStudentFromClass(classId, studentId, userId);
         return ResponseEntity.ok("Học sinh đã được xóa khỏi lớp!");
     }
 
-    //Lấy danh sách sinh viên trong lớp học
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER', 'ROLE_STUDENT')")
     @GetMapping("/{classId}/students")
     public ResponseEntity<List<UserDTO>> getStudentsInClass(@PathVariable Long classId) {
         List<UserDTO> students = classEntityService.getStudentsInClass(classId);
         return ResponseEntity.ok(students);
     }
 
-    //Lấy danh sách giáo viên trong lớp học
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER' or hasRole('ROLE_STUDENT')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER', 'ROLE_STUDENT')")
     @GetMapping("/{classId}/teachers")
     public ResponseEntity<List<UserDTO>> getTeachersInClass(@PathVariable Long classId) {
         List<UserDTO> teachers = classEntityService.getTeachersInClass(classId);

@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,7 +30,8 @@ public class JoinRequestController {
 
     @PostMapping("/approve")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
-    public ResponseEntity<?> approveRequest(@RequestParam Long requestId, @RequestParam Long userId) {
+    public ResponseEntity<?> approveRequest(@RequestParam Long requestId, Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         try {
             String message = joinRequestService.approveRequest(requestId, userId);
             return ResponseEntity.ok(message);
@@ -40,7 +42,8 @@ public class JoinRequestController {
 
     @PostMapping("/reject")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
-    public ResponseEntity<?> rejectRequest(@RequestParam Long requestId, @RequestParam Long userId) {
+    public ResponseEntity<?> rejectRequest(@RequestParam Long requestId, Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         try {
             String message = joinRequestService.rejectRequest(requestId, userId);
             return ResponseEntity.ok(message);
@@ -63,7 +66,8 @@ public class JoinRequestController {
     @PostMapping("/{requestId}/approve")
     public ResponseEntity<String> approveTeacherInvite(
             @PathVariable Long requestId,
-            @RequestParam Long inviteeId) {
+            Authentication authentication) {
+        Long inviteeId = Long.parseLong(authentication.getName());
         String response = joinRequestService.approveTeacherInvite(requestId, inviteeId);
         return ResponseEntity.ok(response);
     }
@@ -72,7 +76,8 @@ public class JoinRequestController {
     @PostMapping("/{requestId}/reject")
     public ResponseEntity<String> rejectTeacherInvite(
             @PathVariable Long requestId,
-            @RequestParam Long inviteeId) {
+            Authentication authentication) {
+        Long inviteeId = Long.parseLong(authentication.getName());
         String response = joinRequestService.rejectTeacherInvite(requestId, inviteeId);
         return ResponseEntity.ok(response);
     }

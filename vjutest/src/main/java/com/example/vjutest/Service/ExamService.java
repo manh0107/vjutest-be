@@ -3,12 +3,12 @@ package com.example.vjutest.Service;
 import com.example.vjutest.DTO.ExamDTO;
 import com.example.vjutest.DTO.ResultDTO;
 import com.example.vjutest.DTO.UserAnswerDTO;
+import com.example.vjutest.DTO.ExamStatisticsDTO;
 import com.example.vjutest.Mapper.ExamMapper;
 import com.example.vjutest.Mapper.ResultMapper;
 import com.example.vjutest.Mapper.UserAnswerMapper;
 import com.example.vjutest.Model.*;
 import com.example.vjutest.Repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +18,10 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Collections;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class ExamService {
 
     private final ExamRepository examRepository;
@@ -33,33 +36,6 @@ public class ExamService {
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final UserAnswerMapper userAnswerMapper;
-
-    @Autowired
-    public ExamService(ExamRepository examRepository,
-                       ClassEntityRepository classEntityRepository,
-                       ClassSubjectRepository classSubjectRepository,
-                       SubjectRepository subjectRepository,
-                       UserRepository userRepository,
-                       ExamMapper examMapper,
-                       ResultRepository resultRepository,
-                       ResultMapper resultMapper,
-                       UserAnswerRepository userAnswerRepository,
-                       QuestionRepository questionRepository,
-                       AnswerRepository answerRepository,
-                       UserAnswerMapper userAnswerMapper) {
-        this.examRepository = examRepository;
-        this.classEntityRepository = classEntityRepository;
-        this.classSubjectRepository = classSubjectRepository;
-        this.subjectRepository = subjectRepository;
-        this.userRepository = userRepository;
-        this.examMapper = examMapper;
-        this.resultRepository = resultRepository;
-        this.resultMapper = resultMapper;
-        this.userAnswerRepository = userAnswerRepository;
-        this.questionRepository = questionRepository;
-        this.answerRepository = answerRepository;
-        this.userAnswerMapper = userAnswerMapper;
-    }
 
     //Tạo bài kiểm tra trong lớp học
     @Transactional
@@ -507,5 +483,115 @@ public class ExamService {
         return results.stream()
                 .map(resultMapper::toSimpleDTO) 
                 .collect(Collectors.toList());
-    }   
+    }
+
+    //Update bài kiểm tra trong lớp
+    @Transactional
+    public ExamDTO updateExamInClass(Long examId, Long userId, Long classId, Exam examRequest) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Bài kiểm tra không tồn tại!"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại!"));
+
+        if (!exam.getCreatedBy().equals(user) && !classEntity.getCreatedBy().equals(user) && !"admin".equals(user.getRole().getName())) {
+            throw new RuntimeException("Bạn không có quyền cập nhật bài kiểm tra này!");
+        }
+
+        exam.setName(examRequest.getName());
+        exam.setDescription(examRequest.getDescription());
+
+        if (examRequest.getDurationTime() < 0) {
+            throw new RuntimeException("Thời gian làm bài không hợp lệ!");
+        }
+        exam.setDurationTime(examRequest.getDurationTime());
+
+        exam.setPassScore(examRequest.getPassScore());
+        exam.setIsPublic(examRequest.getIsPublic());
+        exam.setModifiedBy(user);
+        exam.setModifiedAt(LocalDateTime.now());
+
+        return examMapper.toFullDTO(examRepository.save(exam));
+    }
+
+    //Update bài kiểm tra không thuộc lớp
+    @Transactional
+    public ExamDTO updateExamWithoutClass(Long examId, Long userId, Exam examRequest) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Bài kiểm tra không tồn tại!"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        // Kiểm tra quyền cập nhật (admin hoặc teacher tạo bài này)
+        if (!"admin".equals(user.getRole().getName()) && !user.equals(exam.getCreatedBy())) {
+            throw new RuntimeException("Bạn không có quyền cập nhật bài kiểm tra này!");
+        }
+
+        // Bảo vệ không cho gắn vào lớp học nếu đang ở ngoài lớp
+        if (exam.getClassSubject() != null) {
+            throw new RuntimeException("Bài kiểm tra này thuộc lớp học, không thể cập nhật bằng phương thức này!");
+        }
+
+        exam.setName(examRequest.getName());
+        exam.setDescription(examRequest.getDescription());
+
+        if (examRequest.getDurationTime() < 0) {
+            throw new RuntimeException("Thời gian làm bài không hợp lệ!");
+        }
+        exam.setDurationTime(examRequest.getDurationTime());
+
+        exam.setPassScore(examRequest.getPassScore());
+        exam.setModifiedBy(user);
+        exam.setModifiedAt(LocalDateTime.now());
+
+        return examMapper.toFullDTO(examRepository.save(exam));
+    }
+
+    @Transactional
+    public void deleteExam(Long id, Long userId) {
+        Exam exam = examRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        if (!exam.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
+            throw new RuntimeException("Bạn không có quyền xóa bài kiểm tra này");
+        }
+
+        examRepository.delete(exam);
+    }
+
+    public ExamStatisticsDTO getExamStatistics(Long examId, Long userId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        if (!exam.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
+            throw new RuntimeException("Bạn không có quyền xem thống kê bài kiểm tra này");
+        }
+
+        ExamStatisticsDTO statistics = new ExamStatisticsDTO();
+        statistics.setTotalStudents(exam.getUserAnswers().size());
+        statistics.setAverageScore(exam.getUserAnswers().stream()
+                .mapToDouble(userAnswer -> userAnswer.getResult().getScore())
+                .average()
+                .orElse(0.0));
+        statistics.setHighestScore(exam.getUserAnswers().stream()
+                .mapToDouble(answer -> answer.getResult().getScore())
+                .max()
+                .orElse(0.0));
+        statistics.setLowestScore(exam.getUserAnswers().stream()
+                .mapToDouble(answer -> answer.getResult().getScore())
+                .min()
+                .orElse(0.0));
+
+        return statistics;
+    }
 }

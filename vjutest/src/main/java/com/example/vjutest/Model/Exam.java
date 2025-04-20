@@ -78,6 +78,9 @@ public class Exam {
     @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ExamQuestion> examQuestions;
 
+    @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<UserAnswer> userAnswers;
+
     @ManyToOne
     @JoinColumn(name = "subject_id", nullable = false) // Bắt buộc phải có môn học
     private Subject subject;

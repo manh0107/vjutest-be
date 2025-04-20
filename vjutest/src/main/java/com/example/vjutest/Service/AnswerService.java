@@ -1,7 +1,9 @@
 package com.example.vjutest.Service;
 
 import java.util.List;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.vjutest.Repository.AnswerRepository;
 import com.example.vjutest.Repository.QuestionRepository;
@@ -35,7 +37,7 @@ public class AnswerService {
             throw new RuntimeException("Bạn không có quyền tạo đáp án!");
         }
             
-        if (answerRequest.size() > 4) {
+        if (answerRequest.stream().count() > 4) {
             throw new RuntimeException("Chỉ được tạo tối đa 4 đáp án cho mỗi câu hỏi.");
         }
 
@@ -63,6 +65,44 @@ public class AnswerService {
         question.setIsCompleted(questionService.checkIfQuestionIsCompleted(question));
         questionRepository.save(question);
         return saved.stream().map(answerMapper::toSimpleDTO).toList();
+    }
+
+    @Transactional
+    public AnswerDTO updateAnswer(Long id, AnswerDTO answerRequest, Long userId, Long questionId) {
+        Answer answer = answerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đáp án"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        Question question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Câu hỏi không tồn tại!"));
+            
+        if (!question.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
+            throw new RuntimeException("Bạn không có quyền cập nhật đáp án này");
+        }
+
+        answer.setAnswerName(answerRequest.getAnswerName());
+        answer.setIsCorrect(answerRequest.getIsCorrect());
+        answer.setModifiedBy(user);
+
+        answer = answerRepository.save(answer);
+        return answerMapper.toFullDTO(answer);
+    }
+
+    @Transactional
+    public void deleteAnswer(Long id, Long userId) {
+        Answer answer = answerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đáp án"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        if (!answer.getQuestion().getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
+            throw new RuntimeException("Bạn không có quyền xóa đáp án này");
+        }
+
+        answerRepository.delete(answer);
     }
 }
 

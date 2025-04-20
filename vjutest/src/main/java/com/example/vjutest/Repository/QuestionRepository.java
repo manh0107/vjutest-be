@@ -11,4 +11,5 @@ import com.example.vjutest.Model.Question;
 public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findAllByIsPublic(Boolean isPublic);
     List<Question> findAllByIsPublicTrueAndSubjectId(Long subjectId);
+    List<Question> findAllByExamQuestions_Exam_Id(Long examId);
 }

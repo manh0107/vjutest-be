@@ -3,60 +3,52 @@ package com.example.vjutest.Controller;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.vjutest.DTO.QuestionDTO;
 import com.example.vjutest.Mapper.QuestionMapper;
 import com.example.vjutest.Model.Question;
 import com.example.vjutest.Service.QuestionService;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/questions")
+@RequiredArgsConstructor
 public class QuestionController {
 
     private final QuestionService questionService;
     private final QuestionMapper questionMapper;
 
-    @Autowired
-    public QuestionController(QuestionService questionService, QuestionMapper questionMapper) {
-        this.questionService = questionService;
-        this.questionMapper = questionMapper;
-    }
 
     @PostMapping("/create")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<QuestionDTO> createQuestion(
             @RequestBody Question questionRequest,
-            @RequestParam Long userId,
-            @RequestParam Long subjectId) {      
+            @RequestParam Long subjectId,
+            Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         QuestionDTO question = questionService.createQuestion(questionRequest, userId, subjectId);
         return ResponseEntity.ok(question);
     }
 
-    // Tạo câu hỏi bên trong bài kiểm tra (có thể public hoặc private)
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create-in-exam")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<QuestionDTO> createQuestionInExam(
             @RequestBody Question questionRequest,
             @RequestParam Long examId,
-            @RequestParam Long userId,
-            @RequestParam Long subjectId) {
+            @RequestParam Long subjectId,
+            Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         QuestionDTO question = questionService.createQuestionInExam(questionRequest, examId, userId, subjectId);
         return ResponseEntity.ok(question);
     }
 
-    // Lấy danh sách câu hỏi từ ngân hàng câu hỏi
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @GetMapping("/bank")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<List<QuestionDTO>> getQuestionsFromBank() {
         List<Question> questions = questionService.getQuestionsFromBank();
         List<QuestionDTO> questionDTOs = questions.stream()
@@ -65,9 +57,8 @@ public class QuestionController {
         return ResponseEntity.ok(questionDTOs);
     }
 
-    // Lấy danh sách câu hỏi công khai theo exam
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @GetMapping("/bank/{examId}")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<List<QuestionDTO>> getPublicQuestionsByExam(@PathVariable Long examId) {
         List<Question> questions = questionService.getPublicQuestionsByExam(examId);
         List<QuestionDTO> dtos = questions.stream()
@@ -76,15 +67,50 @@ public class QuestionController {
         return ResponseEntity.ok(dtos);
     }
 
-    // Gán các câu hỏi từ ngân hàng vào bài kiểm tra
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/bank/assign")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<String> assignQuestionsToExam(
             @RequestParam Long examId,
-            @RequestParam Long userId,
-            @RequestBody List<Long> questionIds) {
-
+            @RequestBody List<Long> questionIds,
+            Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
         questionService.addQuestionsToExam(examId, userId, questionIds);
         return ResponseEntity.ok("Gán câu hỏi vào bài kiểm tra thành công!");
+    }
+
+    @PutMapping("/update/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    public ResponseEntity<QuestionDTO> updateBankQuestion(
+            @PathVariable Long id,
+            @RequestBody QuestionDTO questionRequest,
+            Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
+        return ResponseEntity.ok(questionService.updateBankQuestion(id, questionRequest, userId));
+    }
+
+    @PutMapping("/update-in-exam/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    public ResponseEntity<QuestionDTO> updateQuestionInExam(
+            @PathVariable Long id,
+            @RequestParam Long examId,
+            @RequestBody QuestionDTO questionRequest,
+            Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
+        return ResponseEntity.ok(questionService.updateQuestionInExam(id, questionRequest, examId, userId));
+    }
+
+    @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    public ResponseEntity<Void> deleteQuestion(@PathVariable Long id, Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
+        questionService.deleteQuestion(id, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/exam/{examId}")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
+    public ResponseEntity<List<QuestionDTO>> getQuestionsByExam(@PathVariable Long examId, Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());
+        return ResponseEntity.ok(questionService.getQuestionsByExam(examId, userId));
     }
 }

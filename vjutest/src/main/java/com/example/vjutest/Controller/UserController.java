@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.vjutest.DTO.UserDTO;
@@ -23,10 +24,12 @@ public class UserController {
         this.userService = userService;
     }
 
+    // Chỉ admin có quyền tạo người dùng
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PostMapping("/create")
-    public ResponseEntity<?> createUser(@RequestBody User user, @RequestParam Long userId) {
+    public ResponseEntity<?> createUser(@RequestBody User user, Authentication authentication) {
         try {
+            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
             user.setImage("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg"); 
             UserDTO createdUser = userService.createUser(user, userId);
             return ResponseEntity.ok(createdUser);
@@ -35,10 +38,12 @@ public class UserController {
         }
     }
 
+    // Cập nhật thông tin người dùng
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PutMapping("/update/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user, @RequestParam Long userId) {
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user, Authentication authentication) {
         try {
+            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
             UserDTO updatedUser = userService.updateUser(id, user, userId);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
@@ -46,10 +51,12 @@ public class UserController {
         }
     }
 
+    // Xóa người dùng
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable Long id, @RequestParam Long userId) {
+    public ResponseEntity<?> deleteUser(@PathVariable Long id, Authentication authentication) {
         try {
+            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
             userService.deleteUser(id, userId);
             return ResponseEntity.ok("Xóa người dùng thành công");
         } catch (Exception e) {
@@ -57,17 +64,21 @@ public class UserController {
         }
     }
 
+    // Lấy tất cả người dùng
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @GetMapping("/all")
-    public ResponseEntity<List<UserDTO>> getAllSubjects(@RequestParam Long userId) {
+    public ResponseEntity<List<UserDTO>> getAllUsers(Authentication authentication) {
+        Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
         List<UserDTO> users = userService.getAllUsers(userId);
         return ResponseEntity.ok(users);
     }
 
+    // Lấy thông tin người dùng theo ID
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @GetMapping("/find/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable Long id, @RequestParam Long userId) {
+    public ResponseEntity<?> getUserById(@PathVariable Long id, Authentication authentication) {
         try {
+            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
             UserDTO userDTO = userService.getUserById(id, userId);
             return ResponseEntity.ok(userDTO);
         } catch (Exception e) {
@@ -75,10 +86,12 @@ public class UserController {
         }
     }
 
+    // Lấy thông tin cá nhân của người dùng (ROLE_USER hoặc ROLE_TEACHER)
     @PreAuthorize("hasRole('ROLE_USER') or hasRole('ROLE_TEACHER')")
     @GetMapping("/profile")
-    public ResponseEntity<?> getProfile(@RequestParam Long userId) {
+    public ResponseEntity<?> getProfile(Authentication authentication) {
         try {
+            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
             UserDTO user = userService.getProfile(userId);
             return ResponseEntity.ok(user);
         } catch (Exception e) {
@@ -86,10 +99,12 @@ public class UserController {
         }
     }
 
+    // Cập nhật thông tin cá nhân
     @PreAuthorize("hasRole('ROLE_USER') or hasRole('ROLE_TEACHER')")
     @PutMapping("/update/profile")
-    public ResponseEntity<?> updateProfile(@RequestParam Long userId, @RequestBody User user) {
+    public ResponseEntity<?> updateProfile(@RequestBody User user, Authentication authentication) {
         try {
+            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
             UserDTO updatedUser = userService.updateProfile(userId, user);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
