@@ -75,7 +75,7 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò với ID: " + user.getRole().getId()));
     
         user.setRole(role);
-        user.setIsEnabled(false);
+        user.setIsEnabled(user.getIsEnabled());
     
         User savedUser = userRepository.save(user);
         return userMapper.toDTO(savedUser);
