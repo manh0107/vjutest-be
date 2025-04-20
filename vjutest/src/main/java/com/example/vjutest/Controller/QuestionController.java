@@ -12,6 +12,7 @@ import com.example.vjutest.DTO.QuestionDTO;
 import com.example.vjutest.Mapper.QuestionMapper;
 import com.example.vjutest.Model.Question;
 import com.example.vjutest.Service.QuestionService;
+import com.example.vjutest.User.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
 
@@ -30,7 +31,7 @@ public class QuestionController {
             @RequestBody Question questionRequest,
             @RequestParam Long subjectId,
             Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         QuestionDTO question = questionService.createQuestion(questionRequest, userId, subjectId);
         return ResponseEntity.ok(question);
     }
@@ -42,7 +43,7 @@ public class QuestionController {
             @RequestParam Long examId,
             @RequestParam Long subjectId,
             Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         QuestionDTO question = questionService.createQuestionInExam(questionRequest, examId, userId, subjectId);
         return ResponseEntity.ok(question);
     }
@@ -73,7 +74,7 @@ public class QuestionController {
             @RequestParam Long examId,
             @RequestBody List<Long> questionIds,
             Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         questionService.addQuestionsToExam(examId, userId, questionIds);
         return ResponseEntity.ok("Gán câu hỏi vào bài kiểm tra thành công!");
     }
@@ -84,7 +85,7 @@ public class QuestionController {
             @PathVariable Long id,
             @RequestBody QuestionDTO questionRequest,
             Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(questionService.updateBankQuestion(id, questionRequest, userId));
     }
 
@@ -95,14 +96,14 @@ public class QuestionController {
             @RequestParam Long examId,
             @RequestBody QuestionDTO questionRequest,
             Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(questionService.updateQuestionInExam(id, questionRequest, examId, userId));
     }
 
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<Void> deleteQuestion(@PathVariable Long id, Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         questionService.deleteQuestion(id, userId);
         return ResponseEntity.ok().build();
     }
@@ -110,7 +111,7 @@ public class QuestionController {
     @GetMapping("/exam/{examId}")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
     public ResponseEntity<List<QuestionDTO>> getQuestionsByExam(@PathVariable Long examId, Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(questionService.getQuestionsByExam(examId, userId));
     }
 }

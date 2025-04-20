@@ -19,6 +19,7 @@ import com.example.vjutest.DTO.SubjectDTO;
 import com.example.vjutest.Mapper.SubjectMapper;
 import com.example.vjutest.Model.Subject;
 import com.example.vjutest.Service.SubjectService;
+import com.example.vjutest.User.CustomUserDetails;
 
 @RestController
 @RequestMapping("/subjects")
@@ -37,7 +38,7 @@ public class SubjectController {
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create")
     public ResponseEntity<?> createSubject(Authentication authentication, @RequestBody Subject subject) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         try {
             Subject createdSubject = subjectService.createSubject(subject
                     .getName(), subject.getSubjectCode(), subject.getDescription(), subject.getCreditHour(), userId);

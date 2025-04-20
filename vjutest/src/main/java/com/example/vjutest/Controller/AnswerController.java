@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 
 import com.example.vjutest.DTO.AnswerDTO;
 import com.example.vjutest.Service.AnswerService;
+import com.example.vjutest.User.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,7 +26,7 @@ public class AnswerController {
         @RequestParam Long questionId,
         Authentication authentication,
         @RequestBody List<AnswerDTO> answerRequest ) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         List<AnswerDTO> answer = answerService.createAnswersForQuestion(questionId, userId, answerRequest);
         return ResponseEntity.ok(answer);
     }
@@ -33,14 +34,14 @@ public class AnswerController {
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PutMapping("/update/{id}")
     public ResponseEntity<AnswerDTO> updateAnswer(@PathVariable Long id, @RequestBody AnswerDTO answerRequest, Authentication authentication, @RequestParam Long questionId) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(answerService.updateAnswer(id, answerRequest, userId, questionId));
     }
 
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deleteAnswer(@PathVariable Long id, Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         answerService.deleteAnswer(id, userId);
         return ResponseEntity.ok().build();
     }

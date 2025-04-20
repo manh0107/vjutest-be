@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.Model.User;
 import com.example.vjutest.Service.UserService;
+import com.example.vjutest.User.CustomUserDetails;
 
 @RestController
 @RequestMapping("/users")
@@ -29,7 +30,7 @@ public class UserController {
     @PostMapping("/create")
     public ResponseEntity<?> createUser(@RequestBody User user, Authentication authentication) {
         try {
-            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
+            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  // Lấy userId từ Authentication
             user.setImage("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg"); 
             UserDTO createdUser = userService.createUser(user, userId);
             return ResponseEntity.ok(createdUser);
@@ -43,7 +44,7 @@ public class UserController {
     @PutMapping("/update/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user, Authentication authentication) {
         try {
-            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
+            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  // Lấy userId từ Authentication
             UserDTO updatedUser = userService.updateUser(id, user, userId);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
@@ -56,7 +57,7 @@ public class UserController {
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id, Authentication authentication) {
         try {
-            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
+            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  // Lấy userId từ Authentication
             userService.deleteUser(id, userId);
             return ResponseEntity.ok("Xóa người dùng thành công");
         } catch (Exception e) {
@@ -68,7 +69,7 @@ public class UserController {
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @GetMapping("/all")
     public ResponseEntity<List<UserDTO>> getAllUsers(Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  
         List<UserDTO> users = userService.getAllUsers(userId);
         return ResponseEntity.ok(users);
     }
@@ -78,7 +79,7 @@ public class UserController {
     @GetMapping("/find/{id}")
     public ResponseEntity<?> getUserById(@PathVariable Long id, Authentication authentication) {
         try {
-            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
+            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  // Lấy userId từ Authentication
             UserDTO userDTO = userService.getUserById(id, userId);
             return ResponseEntity.ok(userDTO);
         } catch (Exception e) {
@@ -91,7 +92,7 @@ public class UserController {
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(Authentication authentication) {
         try {
-            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
+            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  // Lấy userId từ Authentication
             UserDTO user = userService.getProfile(userId);
             return ResponseEntity.ok(user);
         } catch (Exception e) {
@@ -104,7 +105,7 @@ public class UserController {
     @PutMapping("/update/profile")
     public ResponseEntity<?> updateProfile(@RequestBody User user, Authentication authentication) {
         try {
-            Long userId = Long.parseLong(authentication.getName());  // Lấy userId từ Authentication
+            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  // Lấy userId từ Authentication
             UserDTO updatedUser = userService.updateProfile(userId, user);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {

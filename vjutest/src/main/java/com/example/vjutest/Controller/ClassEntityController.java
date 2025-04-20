@@ -23,6 +23,7 @@ import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.Mapper.ClassEntityMapper;
 import com.example.vjutest.Model.ClassEntity;
 import com.example.vjutest.Service.ClassEntityService;
+import com.example.vjutest.User.CustomUserDetails;
 
 @RestController
 @RequestMapping("/classes")
@@ -41,7 +42,7 @@ public class ClassEntityController {
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create")
     public ResponseEntity<?> createClass(@RequestBody ClassEntity classEntity, Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         try {
             ClassEntity createdClass = classEntityService.createClass(
                 classEntity.getName(),
@@ -58,7 +59,7 @@ public class ClassEntityController {
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER', 'ROLE_STUDENT')")
     @GetMapping("/all")
     public ResponseEntity<List<ClassEntityDTO>> getAllClasses(Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         List<ClassEntity> classes = classEntityService.getAllClasses(userId);
         List<ClassEntityDTO> classDTOs = classes.stream()
                 .map(classEntityMapper::toSimpleDTO)
@@ -69,7 +70,7 @@ public class ClassEntityController {
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER')")
     @GetMapping("/find/{id}")
     public ResponseEntity<?> getClassById(@PathVariable Long id, Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return classEntityService.getClassById(id, userId)
                 .map(classEntity -> ResponseEntity.ok(classEntityMapper.toFullDTO(classEntity)))
                 .orElse(ResponseEntity.notFound().build());
@@ -81,7 +82,7 @@ public class ClassEntityController {
             @PathVariable Long id,
             @RequestBody ClassEntity classEntity,
             Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         ClassEntity updatedClass = classEntityService.updateClass(id, classEntity, userId);
         return ResponseEntity.ok(classEntityMapper.toSimpleDTO(updatedClass));
     }
@@ -89,7 +90,7 @@ public class ClassEntityController {
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TEACHER')")
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> deleteClass(@PathVariable Long id, Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         classEntityService.deleteClass(id, userId);
         return ResponseEntity.ok("Lớp học đã được xóa!");
     }
@@ -100,7 +101,7 @@ public class ClassEntityController {
             @PathVariable Long classId,
             @RequestParam Long studentId,
             Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         classEntityService.addStudentToClass(classId, studentId, userId);
         return ResponseEntity.ok("Học sinh đã được thêm vào lớp!");
     }
@@ -111,7 +112,7 @@ public class ClassEntityController {
             @PathVariable Long classId,
             @RequestParam Long inviteeId,
             Authentication authentication) {
-        Long inviterId = Long.parseLong(authentication.getName());
+        Long inviterId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         classEntityService.inviteTeacher(classId, inviterId, inviteeId);
         return ResponseEntity.ok("Giáo viên đã được mời vào lớp!");
     }
@@ -121,7 +122,7 @@ public class ClassEntityController {
     public ResponseEntity<?> requestToJoin(
             @RequestParam Long classId,
             Authentication authentication) {
-        Long studentId = Long.parseLong(authentication.getName());
+        Long studentId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         try {
             String message = classEntityService.requestToJoin(studentId, classId);
             return ResponseEntity.ok(message);
@@ -135,7 +136,7 @@ public class ClassEntityController {
     public ResponseEntity<String> leaveClass (
             @PathVariable Long classId,
             Authentication authentication) {
-        Long studentId = Long.parseLong(authentication.getName());
+        Long studentId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         classEntityService.leaveClass(classId, studentId);
         return ResponseEntity.ok("Bạn đã rời khỏi lớp học thành công!");
     }
@@ -146,7 +147,7 @@ public class ClassEntityController {
             @PathVariable Long classId,
             @RequestParam Long studentId,
             Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         classEntityService.removeStudentFromClass(classId, studentId, userId);
         return ResponseEntity.ok("Học sinh đã được xóa khỏi lớp!");
     }

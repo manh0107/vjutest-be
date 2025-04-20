@@ -4,6 +4,7 @@ import com.example.vjutest.DTO.JoinRequestDTO;
 import com.example.vjutest.Mapper.JoinRequestMapper;
 import com.example.vjutest.Model.JoinRequest;
 import com.example.vjutest.Service.JoinRequestService;
+import com.example.vjutest.User.CustomUserDetails;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,7 +32,7 @@ public class JoinRequestController {
     @PostMapping("/approve")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<?> approveRequest(@RequestParam Long requestId, Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         try {
             String message = joinRequestService.approveRequest(requestId, userId);
             return ResponseEntity.ok(message);
@@ -43,7 +44,7 @@ public class JoinRequestController {
     @PostMapping("/reject")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     public ResponseEntity<?> rejectRequest(@RequestParam Long requestId, Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         try {
             String message = joinRequestService.rejectRequest(requestId, userId);
             return ResponseEntity.ok(message);
@@ -67,7 +68,7 @@ public class JoinRequestController {
     public ResponseEntity<String> approveTeacherInvite(
             @PathVariable Long requestId,
             Authentication authentication) {
-        Long inviteeId = Long.parseLong(authentication.getName());
+        Long inviteeId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         String response = joinRequestService.approveTeacherInvite(requestId, inviteeId);
         return ResponseEntity.ok(response);
     }
@@ -77,7 +78,7 @@ public class JoinRequestController {
     public ResponseEntity<String> rejectTeacherInvite(
             @PathVariable Long requestId,
             Authentication authentication) {
-        Long inviteeId = Long.parseLong(authentication.getName());
+        Long inviteeId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         String response = joinRequestService.rejectTeacherInvite(requestId, inviteeId);
         return ResponseEntity.ok(response);
     }

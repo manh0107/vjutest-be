@@ -6,6 +6,7 @@ import com.example.vjutest.DTO.UserAnswerDTO;
 import com.example.vjutest.Model.Exam;
 import com.example.vjutest.Request.UpdateExamStatusRequest;
 import com.example.vjutest.Service.ExamService;
+import com.example.vjutest.User.CustomUserDetails;
 import com.example.vjutest.DTO.ExamStatisticsDTO;
 
 import org.springframework.http.HttpStatus;
@@ -35,7 +36,7 @@ public class ExamController {
             @RequestBody Exam examRequest,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         ExamDTO exam = examService.createExam(classId, subjectId, userId, examRequest);
         return ResponseEntity.ok(exam);
     }
@@ -48,7 +49,7 @@ public class ExamController {
             @RequestParam Long subjectId,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         List<ExamDTO> exams = examService.getExamsInClass(classId, subjectId, userId);
         return ResponseEntity.ok(exams);
     }
@@ -60,7 +61,7 @@ public class ExamController {
             @PathVariable Long examId,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         Optional<ExamDTO> exam = examService.getExamById(examId, userId);
         return exam.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -73,7 +74,7 @@ public class ExamController {
             @RequestBody UpdateExamStatusRequest request,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         ExamDTO updatedExam = examService.updateExamStatus(
                 examId,
                 request.getNewStatus(),
@@ -92,7 +93,7 @@ public class ExamController {
             @RequestBody Exam examRequest,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         ExamDTO createdExam = examService.createExamWithoutClass(subjectId, userId, examRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdExam);
     }
@@ -104,7 +105,7 @@ public class ExamController {
             @PathVariable Long subjectId,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(examService.getExamsBySubjectAndUser(subjectId, userId));
     }
 
@@ -115,7 +116,7 @@ public class ExamController {
             @PathVariable Long examId,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         ResultDTO result = examService.startExam(examId, userId);
         return ResponseEntity.ok(result);
     }
@@ -128,7 +129,7 @@ public class ExamController {
             @RequestParam Long studentId,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         ResultDTO result = examService.allowStudentToRetake(examId, studentId, userId);
         return ResponseEntity.ok(result);
     }
@@ -142,7 +143,7 @@ public class ExamController {
             @RequestParam Long answerId,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         UserAnswerDTO userAnswer = examService.chooseAnswer(examId, userId, questionId, answerId);
         return ResponseEntity.ok(userAnswer);
     }
@@ -154,7 +155,7 @@ public class ExamController {
             @PathVariable Long examId,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         ResultDTO result = examService.submitExam(examId, userId);
         return ResponseEntity.ok(result);
     }
@@ -179,7 +180,7 @@ public class ExamController {
             @RequestBody Exam examRequest,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(examService.updateExamWithoutClass(id, userId, examRequest));
     }
 
@@ -192,7 +193,7 @@ public class ExamController {
             @RequestParam Long classId,
             @RequestBody Exam examRequest) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(examService.updateExamInClass(id, userId, classId, examRequest));
     }
 
@@ -203,7 +204,7 @@ public class ExamController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         examService.deleteExam(id, userId);
         return ResponseEntity.ok().build();
     }
@@ -215,7 +216,7 @@ public class ExamController {
             @PathVariable Long examId,
             Authentication authentication) {
 
-        Long userId = Long.parseLong(authentication.getName());
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(examService.getExamStatistics(examId, userId));
     }
 }
