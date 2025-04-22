@@ -1,5 +1,6 @@
 package com.example.vjutest.DTO;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -33,4 +34,5 @@ public class UserDTO {
     private List<Long> teacherOfClasses;
     private List<Long> joinRequests;
     private List<Long> userAnswers;
+    private LocalDateTime createdAt;
 }

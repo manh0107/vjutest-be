@@ -38,13 +38,15 @@ public class UserMapper {
         dto.setTeacherOfClasses(convertToIdList(user.getTeacherOfClasses()));
         dto.setJoinRequests(convertToIdList(user.getJoinRequests()));
         dto.setUserAnswers(convertToIdList(user.getUserAnswers()));
+        dto.setCreatedAt(user.getCreatedAt());
         
         return dto;
     }
 
     public UserSimpleDTO toSimpleDTO(User user) {
         return new UserSimpleDTO(
-            user.getId()
+            user.getId(),
+            user.getName()
         );
     }
 
