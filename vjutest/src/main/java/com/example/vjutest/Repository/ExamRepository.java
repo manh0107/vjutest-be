@@ -1,6 +1,7 @@
 package com.example.vjutest.Repository;
 
 import com.example.vjutest.Model.Exam;
+import com.example.vjutest.Model.Subject;
 import com.example.vjutest.Model.User;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,4 +22,6 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
     List<Exam> findByClassSubject_ClassEntity_IdAndClassSubject_Subject_IdAndIsPublicTrue(Long classId, Long subjectId);
 
     List<Exam> findByClassSubject_Subject_IdAndIsPublicTrue(Long subjectId);
+
+    int countBySubject(Subject subject);
 }
