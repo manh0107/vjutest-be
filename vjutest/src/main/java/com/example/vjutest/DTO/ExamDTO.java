@@ -20,6 +20,7 @@ public class ExamDTO {
     private String examCode;
     private String description;
     private Long durationTime;
+    private Integer passScore;
     private Integer maxScore;
     private Status status;
 

@@ -34,6 +34,7 @@ public class ExamMapper {
         dto.setExamCode(exam.getExamCode());
         dto.setDescription(exam.getDescription());
         dto.setDurationTime(exam.getDurationTime());
+        dto.setPassScore(exam.getPassScore());
         dto.setMaxScore(exam.getMaxScore());
         dto.setStatus(exam.getStatus());
         dto.setIsPublic(exam.getIsPublic());
@@ -82,6 +83,7 @@ public class ExamMapper {
         dto.setExamCode(exam.getExamCode());
         dto.setDescription(exam.getDescription());
         dto.setDurationTime(exam.getDurationTime());
+        dto.setPassScore(exam.getPassScore());
         dto.setMaxScore(exam.getMaxScore());
         dto.setStatus(exam.getStatus());
         dto.setIsPublic(exam.getIsPublic());

@@ -190,8 +190,8 @@ public class ExamService {
             }
             
             if(Boolean.FALSE.equals(exam.getIsPublic())) {
-                if (startAt == null || startAt.isBefore(exam.getCreatedAt().plusDays(1))) {
-                    throw new RuntimeException("Thời gian bắt đầu phải cách thời gian tạo ít nhất 1 ngày!");
+                if (startAt == null || startAt.isBefore(exam.getCreatedAt().plusMinutes(30))) {
+                    throw new RuntimeException("Thời gian bắt đầu phải cách thời gian tạo ít nhất 30 phút!");
                 }                     
                 exam.setStartAt(startAt);
                 exam.setEndAt(startAt.plusMinutes(exam.getDurationTime()));
