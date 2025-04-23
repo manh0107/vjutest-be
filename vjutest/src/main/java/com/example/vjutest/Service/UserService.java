@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,9 +25,11 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
-    
+    private final PasswordEncoder passwordEncoder;
+
     @Autowired
-    public UserService(UserRepository userRepository, RoleRepository roleRepository, UserMapper userMapper) {
+    public UserService(UserRepository userRepository, RoleRepository roleRepository, UserMapper userMapper, PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userMapper = userMapper;
@@ -76,6 +79,7 @@ public class UserService {
     
         user.setRole(role);
         user.setIsEnabled(user.getIsEnabled());
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
     
         User savedUser = userRepository.save(user);
         return userMapper.toDTO(savedUser);
@@ -123,10 +127,10 @@ public class UserService {
     }
 
     private void updateUserFields(User user, User updatedUser) {
+        if (updatedUser.getPassword() != null) user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
         if (updatedUser.getName() != null) user.setName(updatedUser.getName());
         if (updatedUser.getClassName() != null) user.setClassName(updatedUser.getClassName());
         if (updatedUser.getGender() != null) user.setGender(updatedUser.getGender());
-        if (updatedUser.getPassword() != null) user.setPassword(updatedUser.getPassword());
         if (updatedUser.getImage() != null) user.setImage(updatedUser.getImage());
         if (updatedUser.getIsEnabled() != null) user.setIsEnabled(updatedUser.getIsEnabled());
     }

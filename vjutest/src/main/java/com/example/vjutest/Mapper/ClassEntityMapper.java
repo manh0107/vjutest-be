@@ -8,6 +8,7 @@ import com.example.vjutest.Model.ClassEntity;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.example.vjutest.Model.User; // Ensure the correct package path for User
 
 import org.springframework.stereotype.Component;
 
@@ -37,6 +38,13 @@ public class ClassEntityMapper {
         if (entity.getCreatedBy() != null) {
             dto.setCreatedById(entity.getCreatedBy().getId());
             dto.setCreatedByName(entity.getCreatedBy().getName());
+            dto.setCreateByImage(entity.getCreatedBy().getImage());
+        }
+        if (entity.getUsers() != null) {
+            dto.setUserImage(entity.getUsers().stream().findFirst().map(User::getImage).orElse(null));
+        }
+        if (entity.getTeachers() != null) {
+            dto.setTeacherImage(entity.getTeachers().stream().findFirst().map(User::getImage).orElse(null));
         }
 
         //Lấy đầy đủ thông tin JoinRequest + User gửi request

@@ -19,6 +19,9 @@ public class ClassEntityDTO {
     private String description;
     private Long createdById;
     private String createdByName;
+    private String createByImage;
+    private String userImage;
+    private String teacherImage;
     private LocalDateTime createdAt;
     private List<?> users;
     private List<?> teachers;
