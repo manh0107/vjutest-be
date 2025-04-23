@@ -52,6 +52,10 @@ public class ClassEntityService {
             throw new RuntimeException("Chỉ giáo viên và quản trị viên mới có thể tạo lớp học");
         }
 
+        if (classEntityRepository.existsByClassCode(classCode)) {
+            throw new RuntimeException("Mã lớp đã tồn tại, vui lòng chọn mã khác");
+        }
+
         ClassEntity newClassEntity = new ClassEntity(name, classCode, description, createdBy);
         newClassEntity.getTeachers().add(createdBy);
         return classEntityRepository.save(newClassEntity);
