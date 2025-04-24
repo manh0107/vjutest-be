@@ -8,14 +8,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.Mapper.UserMapper;
 import com.example.vjutest.Model.ClassEntity;
 import com.example.vjutest.Model.JoinRequest;
 import com.example.vjutest.Model.User;
+import com.example.vjutest.Model.Department;
+import com.example.vjutest.Model.Major;
+import com.example.vjutest.Model.Subject;
+import com.example.vjutest.Model.ClassSubject;
+
 import com.example.vjutest.Repository.ClassEntityRepository;
 import com.example.vjutest.Repository.UserRepository;
 import com.example.vjutest.Repository.JoinRequestRepository;
+import com.example.vjutest.Repository.DepartmentRepository;
+import com.example.vjutest.Repository.MajorRepository;
+import com.example.vjutest.Repository.SubjectRepository;
+import com.example.vjutest.Repository.ClassSubjectRepository;
+import com.example.vjutest.Exception.UnauthorizedAccessException;
+import com.example.vjutest.Exception.ResourceNotFoundException;
 
 @Service
 public class ClassEntityService {
@@ -23,34 +35,63 @@ public class ClassEntityService {
     private final ClassEntityRepository classEntityRepository;
     private final UserRepository userRepository;
     private final JoinRequestRepository joinRequestRepository;
+    private final DepartmentRepository departmentRepository;
+    private final MajorRepository majorRepository;
+    private final SubjectRepository subjectRepository;
+    private final ClassSubjectRepository classSubjectRepository;
     private final UserMapper userMapper;
 
     @Autowired
-    public ClassEntityService(ClassEntityRepository classEntityRepository, UserRepository userRepository, JoinRequestRepository joinRequestRepository, UserMapper userMapper) {
+    public ClassEntityService(ClassEntityRepository classEntityRepository, UserRepository userRepository, 
+                            JoinRequestRepository joinRequestRepository, DepartmentRepository departmentRepository,
+                            MajorRepository majorRepository, SubjectRepository subjectRepository,
+                            ClassSubjectRepository classSubjectRepository, UserMapper userMapper) {
         this.classEntityRepository = classEntityRepository;
         this.userRepository = userRepository;
         this.joinRequestRepository = joinRequestRepository;
+        this.departmentRepository = departmentRepository;
+        this.majorRepository = majorRepository;
+        this.subjectRepository = subjectRepository;
+        this.classSubjectRepository = classSubjectRepository;
         this.userMapper = userMapper;
     }
 
     // Kiểm tra user có quyền thao tác trên lớp không (chỉ giáo viên tạo lớp hoặc admin)
     private boolean isAuthorized(Long userId, ClassEntity classEntity) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
 
         String role = user.getRole().getName().toLowerCase();
-        return role.equals("admin") || classEntity.getCreatedBy().getId().equals(userId);
+        if (role.equals("admin")) {
+            return true;
+        }
+
+        // Kiểm tra quyền truy cập dựa trên department và major
+        if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
+            return user.getDepartment().equals(classEntity.getDepartment());
+        } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
+            return user.getMajor().equals(classEntity.getMajor());
+        }
+
+        return classEntity.getCreatedBy().getId().equals(userId);
     }
 
     // Tạo lớp học
     @Transactional
-    public ClassEntity createClass(String name, String classCode, String description, Long userId) {
+    public ClassEntity createClass(String name, String classCode, String description, Long userId, Long departmentId, Long majorId) {
         User createdBy = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
 
-        if (!createdBy.getRole().getName().equalsIgnoreCase("teacher") && !createdBy.getRole().getName().equalsIgnoreCase("admin")) {
-            throw new RuntimeException("Chỉ giáo viên và quản trị viên mới có thể tạo lớp học");
+        if (!createdBy.getRole().getName().equalsIgnoreCase("teacher") && 
+            !createdBy.getRole().getName().equalsIgnoreCase("admin")) {
+            throw new UnauthorizedAccessException("Chỉ giáo viên và quản trị viên mới có thể tạo lớp học");
         }
+
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khoa: " + departmentId));
+
+        Major major = majorRepository.findById(majorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành: " + majorId));
 
         if (classEntityRepository.existsByClassCode(classCode)) {
             throw new RuntimeException("Mã lớp đã tồn tại, vui lòng chọn mã khác");
@@ -58,43 +99,81 @@ public class ClassEntityService {
 
         ClassEntity newClassEntity = new ClassEntity(name, classCode, description, createdBy);
         newClassEntity.getTeachers().add(createdBy);
+        newClassEntity.setDepartment(department);
+        newClassEntity.setMajor(major);
+        newClassEntity.setVisibility(ClassEntity.VisibilityScope.MAJOR); // Mặc định là theo ngành
+
         return classEntityRepository.save(newClassEntity);
     }
 
     // Lấy danh sách lớp học
     public List<ClassEntity> getAllClasses(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
 
-        if (!user.getRole().getName().equalsIgnoreCase("student") && classEntityRepository.findAll().stream().noneMatch(classEntity -> isAuthorized(userId, classEntity))) {
-            throw new RuntimeException("Bạn không có quyền truy cập vào danh sách lớp học!");
+        if ("admin".equals(user.getRole().getName())) {
+            return classEntityRepository.findAll();
         }
 
-        return classEntityRepository.findAll();
+        // Lọc lớp học theo department và major của người dùng
+        return classEntityRepository.findAll().stream()
+                .filter(classEntity -> {
+                    if (classEntity.getVisibility() == ClassEntity.VisibilityScope.PUBLIC) {
+                        return true;
+                    }
+                    if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
+                        return classEntity.getDepartment().equals(user.getDepartment());
+                    }
+                    return classEntity.getMajor().equals(user.getMajor());
+                })
+                .collect(Collectors.toList());
     }
 
     // Lấy lớp học theo ID
     public Optional<ClassEntity> getClassById(Long id, Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
 
-        if (!user.getRole().getName().equalsIgnoreCase("student") && classEntityRepository.findAll().stream().noneMatch(classEntity -> isAuthorized(userId, classEntity))) {
-            throw new RuntimeException("Bạn không có quyền truy cập vào danh sách lớp học!");
+        Optional<ClassEntity> classOpt = classEntityRepository.findById(id);
+        if (classOpt.isEmpty()) {
+            return Optional.empty();
         }
 
-        return classEntityRepository.findById(id);
+        ClassEntity classEntity = classOpt.get();
+        if ("admin".equals(user.getRole().getName())) {
+            return Optional.of(classEntity);
+        }
+
+        // Kiểm tra quyền truy cập
+        if (classEntity.getVisibility() == ClassEntity.VisibilityScope.PUBLIC) {
+            return Optional.of(classEntity);
+        }
+        if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
+            if (classEntity.getDepartment().equals(user.getDepartment())) {
+                return Optional.of(classEntity);
+            }
+        } else {
+            if (classEntity.getMajor().equals(user.getMajor())) {
+                return Optional.of(classEntity);
+            }
+        }
+
+        return Optional.empty();
     }
 
     // Cập nhật thông tin lớp học
     @Transactional
     public ClassEntity updateClass(Long id, ClassEntity classEntity, Long userId) {
         ClassEntity existingClass = classEntityRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
         if (!isAuthorized(userId, existingClass)) {
-            throw new RuntimeException("Bạn không có quyền cập nhật lớp học này");
+            throw new UnauthorizedAccessException("Bạn không có quyền cập nhật lớp học này");
         }
+
         existingClass.setName(classEntity.getName());
         existingClass.setDescription(classEntity.getDescription());
+        existingClass.setVisibility(classEntity.getVisibility());
 
         if (!existingClass.getClassCode().equals(classEntity.getClassCode())) {
             boolean isDuplicate = classEntityRepository.existsByClassCode(classEntity.getClassCode());
@@ -103,6 +182,7 @@ public class ClassEntityService {
             }
             existingClass.setClassCode(classEntity.getClassCode());
         }
+
         return classEntityRepository.save(existingClass);
     }
 
@@ -110,10 +190,10 @@ public class ClassEntityService {
     @Transactional
     public void deleteClass(Long id, Long userId) {
         ClassEntity existingClass = classEntityRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
 
         if (!isAuthorized(userId, existingClass)) {
-            throw new RuntimeException("Bạn không có quyền xóa lớp học này");
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa lớp học này");
         }
 
         classEntityRepository.delete(existingClass);
@@ -123,14 +203,25 @@ public class ClassEntityService {
     @Transactional
     public void addStudentToClass(Long classId, Long studentId, Long userId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
 
         if (!isAuthorized(userId, classEntity)) {
-            throw new RuntimeException("Bạn không có quyền thêm học sinh vào lớp này");
+            throw new UnauthorizedAccessException("Bạn không có quyền thêm học sinh vào lớp này");
         }
 
         User student = userRepository.findById(studentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sinh viên"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sinh viên"));
+
+        // Kiểm tra sinh viên có thuộc cùng department/major không
+        if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
+            if (!student.getDepartment().equals(classEntity.getDepartment())) {
+                throw new UnauthorizedAccessException("Sinh viên không thuộc cùng khoa với lớp học");
+            }
+        } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
+            if (!student.getMajor().equals(classEntity.getMajor())) {
+                throw new UnauthorizedAccessException("Sinh viên không thuộc cùng ngành với lớp học");
+            }
+        }
 
         classEntity.getUsers().add(student);
         classEntityRepository.save(classEntity);
@@ -140,10 +231,10 @@ public class ClassEntityService {
     @Transactional
     public void removeStudentFromClass(Long classId, Long studentId, Long userId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
 
         if (!isAuthorized(userId, classEntity)) {
-            throw new RuntimeException("Bạn không có quyền xóa học sinh khỏi lớp này");
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa học sinh khỏi lớp này");
         }
 
         classEntity.getUsers().removeIf(student -> student.getId().equals(studentId));
@@ -153,11 +244,25 @@ public class ClassEntityService {
     //Sinh viên yêu cầu tham gia lớp học
     @Transactional
     public String requestToJoin(Long studentId, Long classId) {
-        User user = userRepository.findById(studentId).orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
-        ClassEntity classEntity = classEntityRepository.findById(classId).orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học!"));
+        User user = userRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng!"));
+        
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học!"));
 
         if (!user.getRole().getName().equals("student")) {
-            throw new RuntimeException("Chỉ sinh viên mới có thể tham gia lớp học!");
+            throw new UnauthorizedAccessException("Chỉ sinh viên mới có thể tham gia lớp học!");
+        }
+
+        // Kiểm tra sinh viên có thuộc cùng department/major không
+        if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
+            if (!user.getDepartment().equals(classEntity.getDepartment())) {
+                throw new UnauthorizedAccessException("Bạn không thuộc cùng khoa với lớp học");
+            }
+        } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
+            if (!user.getMajor().equals(classEntity.getMajor())) {
+                throw new UnauthorizedAccessException("Bạn không thuộc cùng ngành với lớp học");
+            }
         }
 
         Optional<JoinRequest> existingRequest = joinRequestRepository.findByUserAndClassEntity(user, classEntity);
@@ -174,23 +279,36 @@ public class ClassEntityService {
     @Transactional
     public void inviteTeacher(Long classId, Long inviterId, Long inviteeId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+        
         User inviter = userRepository.findById(inviterId)
-                .orElseThrow(() -> new RuntimeException("Người mời không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người mời không tồn tại"));
+        
         User invitee = userRepository.findById(inviteeId)
-                .orElseThrow(() -> new RuntimeException("Giáo viên được mời không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Giáo viên được mời không tồn tại"));
 
-        if (!classEntity.isTeacherOfClass(inviter) || !inviter.getRole().getName().equalsIgnoreCase("admin")) {
-            throw new RuntimeException("Bạn không có quyền mời giáo viên vào lớp này");
+        if (!isAuthorized(inviter.getId(), classEntity)) {
+            throw new UnauthorizedAccessException("Bạn không có quyền mời giáo viên vào lớp này");
         }
 
         if (!invitee.getRole().getName().equalsIgnoreCase("teacher")) {
-            throw new RuntimeException("Chỉ có thể mời giáo viên vào lớp");
+            throw new UnauthorizedAccessException("Chỉ có thể mời giáo viên vào lớp");
         }
 
         if (inviterId.equals(inviteeId)) {
             throw new RuntimeException("Bạn không thể tự mời chính mình vào lớp!");
-        }        
+        }
+
+        // Kiểm tra giáo viên có thuộc cùng department/major không
+        if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
+            if (!invitee.getDepartment().equals(classEntity.getDepartment())) {
+                throw new UnauthorizedAccessException("Giáo viên không thuộc cùng khoa với lớp học");
+            }
+        } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
+            if (!invitee.getMajor().equals(classEntity.getMajor())) {
+                throw new UnauthorizedAccessException("Giáo viên không thuộc cùng ngành với lớp học");
+            }
+        }
 
         // Kiểm tra xem đã có lời mời chưa
         Optional<JoinRequest> existingRequest = joinRequestRepository.findByUserAndClassEntity(invitee, classEntity);
@@ -207,12 +325,13 @@ public class ClassEntityService {
     @Transactional
     public String leaveClass(Long classId, Long studentId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+        
         User student = userRepository.findById(studentId)
-                .orElseThrow(() -> new RuntimeException("Sinh viên không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Sinh viên không tồn tại"));
 
         if (!student.getRole().getName().equalsIgnoreCase("student")) {
-            throw new RuntimeException("Chỉ sinh viên mới có thể rời lớp học");
+            throw new UnauthorizedAccessException("Chỉ sinh viên mới có thể rời lớp học");
         }
 
         if (!classEntity.getUsers().contains(student)) {
@@ -227,7 +346,7 @@ public class ClassEntityService {
     // Lấy danh sách sinh viên trong lớp học
     public List<UserDTO> getStudentsInClass(Long classId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
 
         return classEntity.getUsers().stream()
                 .map(userMapper::toDTO) 
@@ -237,10 +356,116 @@ public class ClassEntityService {
     // Lấy danh sách giáo viên trong lớp học
     public List<UserDTO> getTeachersInClass(Long classId) {
         ClassEntity classEntity = classEntityRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
 
         return classEntity.getTeachers().stream()
                 .map(userMapper::toDTO) 
+                .collect(Collectors.toList());
+    }
+
+    // Lấy danh sách lớp học theo department
+    public List<ClassEntity> getClassesByDepartment(Long departmentId, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
+
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khoa: " + departmentId));
+
+        if (!"admin".equals(user.getRole().getName()) && !user.getDepartment().equals(department)) {
+            throw new UnauthorizedAccessException("Bạn không có quyền xem lớp học của khoa này");
+        }
+
+        return classEntityRepository.findByDepartment(department);
+    }
+
+    // Lấy danh sách lớp học theo major
+    public List<ClassEntity> getClassesByMajor(Long majorId, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
+
+        Major major = majorRepository.findById(majorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành: " + majorId));
+
+        if (!"admin".equals(user.getRole().getName()) && !user.getMajor().equals(major)) {
+            throw new UnauthorizedAccessException("Bạn không có quyền xem lớp học của ngành này");
+        }
+
+        return classEntityRepository.findByMajor(major);
+    }
+
+    // Thay đổi visibility của lớp học
+    @Transactional
+    public ClassEntity changeVisibility(Long classId, ClassEntity.VisibilityScope visibility, Long userId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
+        if (!isAuthorized(userId, classEntity)) {
+            throw new UnauthorizedAccessException("Bạn không có quyền thay đổi phạm vi của lớp học này");
+        }
+
+        classEntity.setVisibility(visibility);
+        return classEntityRepository.save(classEntity);
+    }
+
+    // Thêm môn học vào lớp
+    @Transactional
+    public void addSubjectToClass(Long classId, Long subjectId, Long userId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
+        if (!isAuthorized(userId, classEntity)) {
+            throw new UnauthorizedAccessException("Bạn không có quyền thêm môn học vào lớp này");
+        }
+
+        Subject subject = subjectRepository.findById(subjectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Môn học không tồn tại"));
+
+        // Kiểm tra môn học có thuộc cùng major không
+        if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
+            boolean isSubjectInMajor = subject.getMajors().stream()
+                    .anyMatch(major -> major.equals(classEntity.getMajor()));
+            if (!isSubjectInMajor) {
+                throw new UnauthorizedAccessException("Môn học không thuộc cùng ngành với lớp học");
+            }
+        }
+
+        // Kiểm tra môn học đã tồn tại trong lớp chưa
+        if (classSubjectRepository.existsByClassEntityAndSubject(classEntity, subject)) {
+            throw new RuntimeException("Môn học đã tồn tại trong lớp");
+        }
+
+        // Tạo mối quan hệ mới giữa lớp và môn học
+        ClassSubject classSubject = new ClassSubject(classEntity, subject, null);
+        classSubjectRepository.save(classSubject);
+    }
+
+    // Xóa môn học khỏi lớp
+    @Transactional
+    public void removeSubjectFromClass(Long classId, Long subjectId, Long userId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
+        if (!isAuthorized(userId, classEntity)) {
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa môn học khỏi lớp này");
+        }
+
+        Subject subject = subjectRepository.findById(subjectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Môn học không tồn tại"));
+
+        Optional<ClassSubject> classSubjectOpt = Optional.ofNullable(classSubjectRepository.findByClassEntityAndSubject(classEntity, subject));
+        ClassSubject classSubject = classSubjectOpt
+                .orElseThrow(() -> new ResourceNotFoundException("Môn học không tồn tại trong lớp"));
+
+        classSubjectRepository.delete(classSubject);
+    }
+
+    // Lấy danh sách môn học trong lớp
+    public List<Subject> getSubjectsInClass(Long classId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
+        return classSubjectRepository.findByClassEntity(classEntity).stream()
+                .map(ClassSubject::getSubject)
                 .collect(Collectors.toList());
     }
 }

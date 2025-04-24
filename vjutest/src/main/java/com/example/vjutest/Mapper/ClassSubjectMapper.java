@@ -47,7 +47,7 @@ public class ClassSubjectMapper {
         dto.setId(classSubject.getId());
 
         // Chuyển đổi ClassEntity sang DTO đơn giản
-        dto.setClassEntity(classSubject.getClassEntity() != null ? classEntityMapper.toSimpleDTO(classSubject.getClassEntity()) : null);
+        dto.setClassEntity(classSubject.getClassEntity() != null ? classEntityMapper.toDTO(classSubject.getClassEntity()) : null);
 
         // Chuyển đổi Subject sang DTO đơn giản
         dto.setSubject(classSubject.getSubject() != null ? subjectMapper.toDTO(classSubject.getSubject()) : null);

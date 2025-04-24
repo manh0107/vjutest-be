@@ -3,6 +3,8 @@ package com.example.vjutest.Model;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.HashSet;
+import java.util.ArrayList;
 
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -12,6 +14,7 @@ import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -44,11 +47,16 @@ public class User{
     @Column(name = "code", unique = true, nullable = false)
     private Long code;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id", referencedColumnName = "id")
+    private Department department;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "major_id", referencedColumnName = "id")
+    private Major major;
+
     @Column(name = "phone_number", unique = true, nullable = false, length = 15)
     private Long phoneNumber;
-
-    @Column(name = "class_name", length = 50)
-    private String className;
 
     @Column(name = "gender", length = 50)
     private String gender;
@@ -72,42 +80,47 @@ public class User{
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    @ManyToOne
-    @JoinColumn(name = "role_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id", referencedColumnName = "id")
     private Role role;
 
-    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<ClassEntity> createClasses;
+    @OneToMany(mappedBy = "createdBy", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<ClassEntity> createClasses = new HashSet<>();
 
-    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Subject> createSubjects;
+    @OneToMany(mappedBy = "createdBy", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<Subject> createSubjects = new HashSet<>();
 
-    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Exam> createdExams;
+    @OneToMany(mappedBy = "createdBy", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<Exam> createdExams = new HashSet<>();
 
-    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Question> createdQuestions;
+    @OneToMany(mappedBy = "createdBy", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<Question> createdQuestions = new HashSet<>();
 
-    @ManyToMany(mappedBy = "users")
-    private Set<ClassEntity> classes;
+    @OneToMany(mappedBy = "createdBy", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<Major> createdMajors = new HashSet<>();
 
-    @ManyToMany(mappedBy = "teachers")
-    private Set<ClassEntity> teacherOfClasses;
+    @OneToMany(mappedBy = "createdBy", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<Department> createdDepartments = new HashSet<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<JoinRequest> joinRequests;
+    @ManyToMany(mappedBy = "users", fetch = FetchType.LAZY)
+    private Set<ClassEntity> classes = new HashSet<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<UserAnswer> userAnswers;
+    @ManyToMany(mappedBy = "teachers", fetch = FetchType.LAZY)
+    private Set<ClassEntity> teacherOfClasses = new HashSet<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Token> tokens;
+    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<JoinRequest> joinRequests = new HashSet<>();
 
-    public User(String name, Long code, Long phoneNumber, String className, String gender, String email, String password, Role role, String image, Boolean isEnabled) {
+    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private List<UserAnswer> userAnswers = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private List<Token> tokens = new ArrayList<>();
+
+    public User(String name, Long code, Long phoneNumber, String gender, String email, String password, Role role, String image, Boolean isEnabled) {
         this.name = name;
         this.code = code;
         this.phoneNumber = phoneNumber;
-        this.className = className;
         this.gender = gender;
         this.email = email;
         this.password = password;

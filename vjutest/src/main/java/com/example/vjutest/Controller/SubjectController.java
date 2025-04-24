@@ -39,11 +39,21 @@ public class SubjectController {
 
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create")
-    public ResponseEntity<?> createSubject(Authentication authentication, @RequestBody Subject subject) {
+    public ResponseEntity<?> createSubject(Authentication authentication, @RequestBody SubjectDTO subjectDTO) {
         Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         try {
-            Subject createdSubject = subjectService.createSubject(subject
-                    .getName(), subject.getSubjectCode(), subject.getDescription(), subject.getCreditHour(), userId);
+            if (subjectDTO.getMajorId() == null) {
+                return ResponseEntity.badRequest().body("Vui lòng chọn ngành học cho môn học");
+            }
+
+            Subject createdSubject = subjectService.createSubject(
+                subjectDTO.getName(),
+                subjectDTO.getSubjectCode(),
+                subjectDTO.getDescription(),
+                subjectDTO.getCreditHour(),
+                userId,
+                subjectDTO.getMajorId()
+            );
             return ResponseEntity.ok(subjectMapper.toDTO(createdSubject));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -52,8 +62,9 @@ public class SubjectController {
 
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
     @GetMapping("/all")
-    public ResponseEntity<List<SubjectDTO>> getAllSubjects() {
-        List<Subject> subjects = subjectService.getAllSubjects();
+    public ResponseEntity<List<SubjectDTO>> getAllSubjects(Authentication authentication) {
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        List<Subject> subjects = subjectService.getAllSubjects(userId);
         List<SubjectDTO> subjectDTOs = subjects.stream()
                 .map(subjectMapper::toDTO)
                 .collect(Collectors.toList());
@@ -62,24 +73,26 @@ public class SubjectController {
 
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
     @GetMapping("/find/{id}")
-    public ResponseEntity<?> getSubjectById(@PathVariable Long id) {
-        return subjectService.getSubjectById(id)
+    public ResponseEntity<?> getSubjectById(@PathVariable Long id, Authentication authentication) {
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        return subjectService.getSubjectById(id, userId)
                 .map(subject -> ResponseEntity.ok(subjectMapper.toDTO(subject)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PutMapping("/update/{id}")
-    public ResponseEntity<?> updateSubject(@PathVariable Long id, @RequestBody Subject subject, Authentication authentication) {
+    public ResponseEntity<?> updateSubject(@PathVariable Long id, @RequestBody SubjectDTO subjectDTO, Authentication authentication) {
         Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         try {
             Subject updatedSubject = subjectService.updateSubject(
                 id,
-                subject.getName(),
-                subject.getSubjectCode(),
-                subject.getDescription(),
-                subject.getCreditHour(),
-                userId
+                subjectDTO.getName(),
+                subjectDTO.getSubjectCode(),
+                subjectDTO.getDescription(),
+                subjectDTO.getCreditHour(),
+                userId,
+                subjectDTO.getMajorId()
             );
             return ResponseEntity.ok(subjectMapper.toDTO(updatedSubject));
         } catch (Exception e) {

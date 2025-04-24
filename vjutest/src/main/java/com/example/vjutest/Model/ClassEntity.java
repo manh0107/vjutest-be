@@ -1,9 +1,7 @@
 package com.example.vjutest.Model;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -14,6 +12,8 @@ import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -34,9 +34,15 @@ import lombok.Setter;
 @Setter
 @Getter
 @Entity
-@Table(name="classes", uniqueConstraints = @UniqueConstraint(columnNames = {"id", "created_by"}))
+@Table(name="classes", uniqueConstraints = @UniqueConstraint(columnNames = {"id", "created_by_id"}))
 public class ClassEntity {
     
+    public enum VisibilityScope {
+        PUBLIC,
+        DEPARTMENT,
+        MAJOR
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -50,43 +56,57 @@ public class ClassEntity {
     @Column(name = "class_code", unique = true, nullable = false, length = 50)
     private String classCode;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false)
+    private VisibilityScope visibility = VisibilityScope.MAJOR;
+
     @CreationTimestamp 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = false)
+    @JoinColumn(name = "created_by_id", referencedColumnName = "id")
     private User createdBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id", referencedColumnName = "id")
+    private Department department;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "major_id", referencedColumnName = "id")
+    private Major major;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-        name = "class_users",
-        joinColumns = @JoinColumn(name = "class_id"),
-        inverseJoinColumns = @JoinColumn(name = "user_id")
+        name = "class_user",
+        joinColumns = @JoinColumn(name = "class_id", referencedColumnName = "id"),
+        inverseJoinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id")
     )
     private Set<User> users = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-        name = "class_teachers",
-        joinColumns = @JoinColumn(name = "class_id"),
-        inverseJoinColumns = @JoinColumn(name = "teacher_id")
+        name = "class_teacher",
+        joinColumns = @JoinColumn(name = "class_id", referencedColumnName = "id"),
+        inverseJoinColumns = @JoinColumn(name = "teacher_id", referencedColumnName = "id")
     )
     private Set<User> teachers = new HashSet<>();
 
-    @OneToMany(mappedBy = "classEntity", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<JoinRequest> joinRequests;
+    @OneToMany(mappedBy = "classEntity", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<JoinRequest> joinRequests = new HashSet<>();
 
-    @OneToMany(mappedBy = "classEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<ClassSubject> classSubjects = new ArrayList<>();
+    @OneToMany(mappedBy = "classEntity", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<ClassSubject> classSubjects = new HashSet<>();
 
     public ClassEntity() {}
 
-    public ClassEntity(String name, String classCode, String description,  User createdBy) {
+    public ClassEntity(String name, String classCode, String description, User createdBy) {
         this.name = name;
         this.classCode = classCode;
         this.description = description;
         this.createdBy = createdBy;
+        this.department = createdBy.getDepartment();
+        this.major = createdBy.getMajor();
     }
 
     @PrePersist
@@ -95,6 +115,7 @@ public class ClassEntity {
             this.classCode = "C-" + this.classCode;
         }
     }
+
     @PreUpdate
     public void preUpdate() {
         if (this.classCode != null && !this.classCode.startsWith("C-")) {

@@ -2,6 +2,7 @@ package com.example.vjutest.DTO;
 
 import java.time.LocalDateTime;
 
+import com.example.vjutest.Model.Exam.ExamVisibility;
 import com.example.vjutest.Model.Exam.Status;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -26,6 +27,8 @@ public class ExamDTO {
 
     @JsonProperty("isPublic")
     private Boolean isPublic;
+
+    private ExamVisibility visibility;
     
     private LocalDateTime startAt;
     private LocalDateTime endAt;

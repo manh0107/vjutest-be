@@ -17,9 +17,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "answers",
-       uniqueConstraints = { @UniqueConstraint(columnNames = {"question_id", "answer_name"}) }
-)
+@Table(name = "answers")
 public class Answer {
 
     @Id
@@ -30,7 +28,7 @@ public class Answer {
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
-    @Column(name = "answer_name", nullable = false, columnDefinition = "TEXT", length = 200)
+    @Column(name = "answer_name", nullable = false, columnDefinition = "TEXT")
     private String answerName;
 
     @Column(name = "is_correct", nullable = false)

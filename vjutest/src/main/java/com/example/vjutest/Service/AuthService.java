@@ -87,7 +87,6 @@ public class AuthService {
                 request.getName(),
                 request.getCode(),
                 request.getPhoneNumber(),
-                request.getClassName(),
                 request.getGender(),
                 request.getEmail(),
                 encodedPassword,

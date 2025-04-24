@@ -10,18 +10,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.vjutest.DTO.ExamQuestionDTO;
 import com.example.vjutest.DTO.QuestionDTO;
+import com.example.vjutest.Exception.UnauthorizedAccessException;
 import com.example.vjutest.Mapper.QuestionMapper;
 import com.example.vjutest.Model.Answer;
+import com.example.vjutest.Model.Chapter;
 import com.example.vjutest.Model.Exam;
 import com.example.vjutest.Model.ExamQuestion;
 import com.example.vjutest.Model.Question;
 import com.example.vjutest.Model.Subject;
 import com.example.vjutest.Model.User;
 import com.example.vjutest.Repository.AnswerRepository;
+import com.example.vjutest.Repository.ChapterRepository;
 import com.example.vjutest.Repository.ExamQuestionRepository;
 import com.example.vjutest.Repository.ExamRepository;
 import com.example.vjutest.Repository.QuestionRepository;
-import com.example.vjutest.Repository.SubjectRepository;
 import com.example.vjutest.Repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -33,51 +35,73 @@ public class QuestionService {
     private final QuestionRepository questionRepository;
     private final ExamRepository examRepository;
     private final ExamQuestionRepository examQuestionRepository;
-    private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
     private final QuestionMapper questionMapper;
     private final ExamQuestionService examQuestionService;
     private final AnswerRepository answerRepository;
+    private final ChapterRepository chapterRepository;
 
     // Tạo câu hỏi bên ngoài bài kiểm tra (ngân hàng câu hỏi)
-    public QuestionDTO createQuestion(Question questionRequest, Long userId, Long subjectId) {
+    public QuestionDTO createQuestion(Question questionRequest, Long userId, Long chapterId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-        Subject subject = subjectRepository.findById(subjectId)
-                .orElseThrow(() -> new RuntimeException("Môn học không tồn tại!"));
+
+        Chapter chapter = chapterRepository.findById(chapterId)
+                .orElseThrow(() -> new RuntimeException("Chương học không tồn tại!"));
         
         // Kiểm tra quyền tạo bài kiểm tra
         if (!"teacher".equals(user.getRole().getName()) && !"admin".equals(user.getRole().getName())) {
-            throw new RuntimeException("Bạn không có quyền tạo câu hỏi!");
+            throw new UnauthorizedAccessException("Bạn không có quyền tạo câu hỏi!");
+        }
+
+        // Kiểm tra quyền truy cập dựa trên major
+        Subject subject = chapter.getSubject();
+        if (subject != null) {
+            boolean hasAccess = subject.getMajors().stream()
+                    .anyMatch(major -> major.getDepartment().equals(user.getDepartment()));
+            if (!hasAccess && !"admin".equals(user.getRole().getName())) {
+                throw new UnauthorizedAccessException("Bạn không có quyền tạo câu hỏi cho môn học này!");
+            }
         }
         
         // Tạo câu hỏi mới
         Question question = new Question();
         question.setName(questionRequest.getName());
         question.setDifficulty(questionRequest.getDifficulty());
-        question.setIsPublic(true);  // Mặc định câu hỏi là public
+        question.setIsPublic(true); // câu hỏi tạo ngoài bài kiểm tra sẽ là public (ngân hàng câu hỏi)
         question.setCreatedAt(LocalDateTime.now());
         question.setModifiedAt(LocalDateTime.now());
         question.setModifiedBy(user);
         question.setCreatedBy(user);
-        question.setSubject(subject);
+        question.setChapter(chapter);       
 
-        return questionMapper.toFullDTO(questionRepository.save(question)); // Lưu câu hỏi vào ngân hàng câu hỏi
+        return questionMapper.toFullDTO(questionRepository.save(question));
     }
 
     // Tạo câu hỏi bên trong bài kiểm tra (có thể public hoặc private)
     @Transactional
-    public QuestionDTO createQuestionInExam(Question questionRequest, Long examId, Long userId, Long subjectId) {
-        Subject subject = subjectRepository.findById(subjectId)
-                .orElseThrow(() -> new RuntimeException("Môn học không tồn tại!"));
+    public QuestionDTO createQuestionInExam(Question questionRequest, Long examId, Long userId, Long chapterId) {
         Exam exam = examRepository.findById(examId)
                 .orElseThrow(() -> new RuntimeException("Bài kiểm tra không tồn tại!"));
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
+        Chapter chapter = chapterRepository.findById(chapterId)
+                .orElseThrow(() -> new RuntimeException("Chương học không tồn tại!"));
+
         // Kiểm tra quyền tạo bài kiểm tra
         if (!exam.getCreatedBy().equals(user) && !"admin".equals(user.getRole().getName())) {
-            throw new RuntimeException("Bạn không có quyền tạo câu hỏi trong bài kiểm tra!");
+            throw new UnauthorizedAccessException("Bạn không có quyền tạo câu hỏi trong bài kiểm tra!");
+        }
+
+        // Kiểm tra quyền truy cập dựa trên major
+        Subject subject = exam.getSubject();
+        if (subject != null) {
+            boolean hasAccess = subject.getMajors().stream()
+                    .anyMatch(major -> major.getDepartment().equals(user.getDepartment()));
+            if (!hasAccess && !"admin".equals(user.getRole().getName())) {
+                throw new UnauthorizedAccessException("Bạn không có quyền tạo câu hỏi cho môn học này!");
+            }
         }
 
         // Tạo câu hỏi mới
@@ -95,7 +119,7 @@ public class QuestionService {
             question.setIsPublic(questionRequest.getIsPublic());
         }
 
-        question.setSubject(subject);
+        question.setChapter(chapter);
         
         Question savedQuestion = questionRepository.save(question);
         List<ExamQuestion> createdExamQuestions = new ArrayList<>();
@@ -122,17 +146,35 @@ public class QuestionService {
     }
 
     // Lấy danh sách câu hỏi từ ngân hàng câu hỏi
-    public List<Question> getQuestionsFromBank() {
-        return questionRepository.findAllByIsPublic(true); // Giả sử chỉ lấy các câu hỏi công khai
+    public List<Question> getQuestionsFromBank(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        if ("admin".equals(user.getRole().getName())) {
+            return questionRepository.findAllByIsPublic(true);
+        }
+
+        // Lấy các câu hỏi public thuộc cùng department và major với user
+        return questionRepository.findAllByIsPublicTrueAndChapterSubjectMajorsDepartmentId(
+            user.getDepartment().getId()
+        );
     }
 
     // Lấy danh sách câu hỏi công khai theo môn học
-    public List<Question> getPublicQuestionsByExam(Long examId) {
+    public List<Question> getPublicQuestionsByExam(Long examId, Long userId) {
         Exam exam = examRepository.findById(examId)
                 .orElseThrow(() -> new RuntimeException("Bài kiểm tra không tồn tại!"));
         
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        // Kiểm tra quyền truy cập
+        if (!exam.getCreatedBy().equals(user) && !"admin".equals(user.getRole().getName())) {
+            throw new UnauthorizedAccessException("Bạn không có quyền xem câu hỏi của bài kiểm tra này!");
+        }
+
         Long subjectId = exam.getSubject().getId();
-        return questionRepository.findAllByIsPublicTrueAndSubjectId(subjectId);
+        return questionRepository.findAllByIsPublicTrueAndChapterSubjectId(subjectId);
     }
     
     // Thêm câu hỏi công khai vào bài kiểm tra
@@ -144,7 +186,17 @@ public class QuestionService {
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         
         if(!exam.getCreatedBy().equals(user) && !"admin".equals(user.getRole().getName())) {
-            throw new RuntimeException("Bạn không có quyền thêm câu hỏi vào bài kiểm tra này!");
+            throw new UnauthorizedAccessException("Bạn không có quyền thêm câu hỏi vào bài kiểm tra này!");
+        }
+
+        // Kiểm tra quyền truy cập dựa trên major
+        Subject subject = exam.getSubject();
+        if (subject != null) {
+            boolean hasAccess = subject.getMajors().stream()
+                    .anyMatch(major -> major.getDepartment().equals(user.getDepartment()));
+            if (!hasAccess && !"admin".equals(user.getRole().getName())) {
+                throw new UnauthorizedAccessException("Bạn không có quyền thêm câu hỏi cho môn học này!");
+            }
         }
     
         for (Long qId : questionIds) {
@@ -156,7 +208,7 @@ public class QuestionService {
                 ExamQuestion eq = new ExamQuestion();
                 eq.setExam(exam);
                 eq.setQuestion(question);
-                eq.setPoint(eq.getPoint());
+                eq.setPoint(1); // Điểm mặc định cho câu hỏi public
                 examQuestionRepository.save(eq);
             }
         }
@@ -184,14 +236,23 @@ public class QuestionService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if (!question.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
-            throw new RuntimeException("Bạn không có quyền cập nhật câu hỏi này");
+            throw new UnauthorizedAccessException("Bạn không có quyền cập nhật câu hỏi này");
+        }
+
+        // Kiểm tra quyền truy cập dựa trên major
+        Subject subject = question.getChapter().getSubject();
+        if (subject != null) {
+            boolean hasAccess = subject.getMajors().stream()
+                    .anyMatch(major -> major.getDepartment().equals(user.getDepartment()));
+            if (!hasAccess && !"admin".equals(user.getRole().getName())) {
+                throw new UnauthorizedAccessException("Bạn không có quyền cập nhật câu hỏi của môn học này!");
+            }
         }
 
         question.setName(questionRequest.getName());
         question.setDifficulty(questionRequest.getDifficulty());
         question.setModifiedAt(LocalDateTime.now());
         question.setModifiedBy(user);
-        // Không cần xử lý isPublic ở đây vì đã mặc định là true
 
         question = questionRepository.save(question);
         return questionMapper.toFullDTO(question);
@@ -209,7 +270,17 @@ public class QuestionService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if (!exam.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
-            throw new RuntimeException("Bạn không có quyền sửa câu hỏi này trong bài kiểm tra");
+            throw new UnauthorizedAccessException("Bạn không có quyền sửa câu hỏi này trong bài kiểm tra");
+        }
+
+        // Kiểm tra quyền truy cập dựa trên major
+        Subject subject = exam.getSubject();
+        if (subject != null) {
+            boolean hasAccess = subject.getMajors().stream()
+                    .anyMatch(major -> major.getDepartment().equals(user.getDepartment()));
+            if (!hasAccess && !"admin".equals(user.getRole().getName())) {
+                throw new UnauthorizedAccessException("Bạn không có quyền cập nhật câu hỏi của môn học này!");
+            }
         }
 
         question.setName(questionRequest.getName());
@@ -243,9 +314,8 @@ public class QuestionService {
         exam.updateMaxScore();
         examRepository.save(exam);
 
-        return questionMapper.toFullDTO(question);
+        return questionMapper.toFullDTO(savedQuestion);
     }
-
 
     @Transactional
     public void deleteQuestion(Long id, Long userId) {
@@ -256,22 +326,37 @@ public class QuestionService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         if (!question.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
-            throw new RuntimeException("Bạn không có quyền xóa câu hỏi này");
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa câu hỏi này");
+        }
+
+        // Kiểm tra quyền truy cập dựa trên major
+        Subject subject = question.getChapter().getSubject();
+        if (subject != null) {
+            boolean hasAccess = subject.getMajors().stream()
+                    .anyMatch(major -> major.getDepartment().equals(user.getDepartment()));
+            if (!hasAccess && !"admin".equals(user.getRole().getName())) {
+                throw new UnauthorizedAccessException("Bạn không có quyền xóa câu hỏi của môn học này!");
+            }
         }
 
         questionRepository.delete(question);
     }
 
     public List<QuestionDTO> getQuestionsByExam(Long examId, Long userId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-        if (!user.getRole().getName().equals("teacher") && !user.getRole().getName().equals("admin")) {
-            throw new RuntimeException("Bạn không có quyền xem câu hỏi của bài kiểm tra này");
+        // Kiểm tra quyền truy cập
+        if (!exam.getCreatedBy().equals(user) && !"admin".equals(user.getRole().getName())) {
+            throw new UnauthorizedAccessException("Bạn không có quyền xem câu hỏi của bài kiểm tra này!");
         }
 
-        return questionRepository.findAllByExamQuestions_Exam_Id(examId).stream()
-                .map(questionMapper::toSimpleDTO)
+        List<Question> questions = questionRepository.findByExamId(examId);
+        return questions.stream()
+                .map(questionMapper::toFullDTO)
                 .collect(Collectors.toList());
     }
 }

@@ -3,8 +3,9 @@ package com.example.vjutest.Mapper;
 import com.example.vjutest.DTO.ClassEntityDTO;
 import com.example.vjutest.DTO.JoinRequestDTO;
 import com.example.vjutest.DTO.UserDTO;
-import com.example.vjutest.DTO.UserSimpleDTO;
 import com.example.vjutest.Model.ClassEntity;
+import com.example.vjutest.Model.Department;
+import com.example.vjutest.Model.Major;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,6 +25,87 @@ public class ClassEntityMapper {
     public ClassEntityMapper(UserMapper userMapper, JoinRequestMapper joinRequestMapper) {
         this.userMapper = userMapper;
         this.joinRequestMapper = joinRequestMapper;
+    }
+
+    public ClassEntityDTO toDTO(ClassEntity entity) {
+        ClassEntityDTO dto = new ClassEntityDTO();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setClassCode(entity.getClassCode());
+        dto.setDescription(entity.getDescription());
+        dto.setCreatedAt(entity.getCreatedAt());
+        dto.setVisibility(entity.getVisibility());
+
+        if (entity.getCreatedBy() != null) {
+            dto.setCreatedById(entity.getCreatedBy().getId());
+            dto.setCreatedByName(entity.getCreatedBy().getName());
+            dto.setCreateByImage(entity.getCreatedBy().getImage());
+        }
+
+        if (entity.getDepartment() != null) {
+            dto.setDepartmentId(entity.getDepartment().getId());
+            dto.setDepartmentName(entity.getDepartment().getName());
+        }
+
+        if (entity.getMajor() != null) {
+            dto.setMajorId(entity.getMajor().getId());
+            dto.setMajorName(entity.getMajor().getName());
+        }
+
+        if (entity.getUsers() != null) {
+            dto.setUserImage(entity.getUsers().stream().findFirst().map(User::getImage).orElse(null));
+        }
+
+        if (entity.getTeachers() != null) {
+            dto.setTeacherImage(entity.getTeachers().stream().findFirst().map(User::getImage).orElse(null));
+        }
+
+        List<JoinRequestDTO> joinRequestDTOs = (entity.getJoinRequests() != null) ? 
+            entity.getJoinRequests().stream()
+                .map(joinRequestMapper::toFullDTO)
+                .collect(Collectors.toList()) 
+            : null;
+        dto.setJoinRequests(joinRequestDTOs);
+
+        List<UserDTO> teacherDTOs = (entity.getTeachers() != null) ? 
+            entity.getTeachers().stream() 
+                .map(userMapper::toDTO) 
+                .collect(Collectors.toList()) 
+            : null;
+        dto.setTeachers(teacherDTOs);
+
+        List<UserDTO> userDTOs = (entity.getUsers() != null) ? 
+            entity.getUsers().stream()
+                .map(userMapper::toDTO) 
+                .collect(Collectors.toList()) 
+            : null;
+        dto.setUsers(userDTOs);
+
+        return dto;
+    }
+
+    public ClassEntity toEntity(ClassEntityDTO dto) {
+        ClassEntity entity = new ClassEntity();
+        entity.setId(dto.getId());
+        entity.setName(dto.getName());
+        entity.setClassCode(dto.getClassCode());
+        entity.setDescription(dto.getDescription());
+        entity.setCreatedAt(dto.getCreatedAt());
+        entity.setVisibility(dto.getVisibility());
+
+        if (dto.getDepartmentId() != null) {
+            Department department = new Department();
+            department.setId(dto.getDepartmentId());
+            entity.setDepartment(department);
+        }
+
+        if (dto.getMajorId() != null) {
+            Major major = new Major();
+            major.setId(dto.getMajorId());
+            entity.setMajor(major);
+        }
+
+        return entity;
     }
 
     //Lấy đầy đủ thông tin
@@ -74,43 +156,4 @@ public class ClassEntityMapper {
         return dto;
     }
 
-    //Chỉ lấy ID đơn giản
-    public ClassEntityDTO toSimpleDTO(ClassEntity entity) {
-        ClassEntityDTO dto = new ClassEntityDTO();
-        dto.setId(entity.getId());
-        dto.setName(entity.getName());
-        dto.setClassCode(entity.getClassCode());
-        dto.setDescription(entity.getDescription());
-        dto.setCreatedAt(entity.getCreatedAt());
-
-        if (entity.getCreatedBy() != null) {
-            dto.setCreatedById(entity.getCreatedBy().getId());
-            dto.setCreatedByName(entity.getCreatedBy().getName());
-        }
-
-        //Chỉ lấy ID của JoinRequest
-        dto.setJoinRequests((entity.getJoinRequests() != null) ? 
-            entity.getJoinRequests().stream()
-                .map(joinRequestMapper::toSimpleDTO) 
-                .collect(Collectors.toList()) 
-            : null);
-
-        //Lấy danh sách giáo viên (Teachers id)
-        List<UserSimpleDTO> teacherDTOs = (entity.getTeachers() != null) ? 
-            entity.getTeachers().stream() 
-                .map(userMapper::toSimpleDTO) 
-                .collect(Collectors.toList()) 
-            : null;
-        dto.setTeachers(teacherDTOs); 
-
-        //Lấy danh sách học sinh đơn giản (chỉ ID)
-        List<UserSimpleDTO> userDTOs = (entity.getUsers() != null) ? 
-            entity.getUsers().stream()
-                .map(userMapper::toSimpleDTO) 
-                .collect(Collectors.toList()) 
-            : null;
-        dto.setUsers(userDTOs);
-
-        return dto;
-    }
 }

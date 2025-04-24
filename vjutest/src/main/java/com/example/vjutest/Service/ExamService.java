@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Collections;
+import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 
@@ -447,7 +448,7 @@ public class ExamService {
         List<UserAnswer> userAnswers = userAnswerRepository.findByExamAndUser(exam, student);
 
         int totalScore = 0;
-        List<ExamQuestion> examQuestions = exam.getExamQuestions();
+        Set<ExamQuestion> examQuestions = exam.getExamQuestions();
 
         for (ExamQuestion eq : examQuestions) {
             Question question = eq.getQuestion();
@@ -578,17 +579,17 @@ public class ExamService {
         }
 
         ExamStatisticsDTO statistics = new ExamStatisticsDTO();
-        statistics.setTotalStudents(exam.getUserAnswers().size());
-        statistics.setAverageScore(exam.getUserAnswers().stream()
-                .mapToDouble(userAnswer -> userAnswer.getResult().getScore())
+        statistics.setTotalStudents(exam.getResults().size());
+        statistics.setAverageScore(exam.getResults().stream()
+                .mapToDouble(Result::getScore)
                 .average()
                 .orElse(0.0));
-        statistics.setHighestScore(exam.getUserAnswers().stream()
-                .mapToDouble(answer -> answer.getResult().getScore())
+        statistics.setHighestScore(exam.getResults().stream()
+                .mapToDouble(Result::getScore)
                 .max()
                 .orElse(0.0));
-        statistics.setLowestScore(exam.getUserAnswers().stream()
-                .mapToDouble(answer -> answer.getResult().getScore())
+        statistics.setLowestScore(exam.getResults().stream()
+                .mapToDouble(Result::getScore)
                 .min()
                 .orElse(0.0));
 

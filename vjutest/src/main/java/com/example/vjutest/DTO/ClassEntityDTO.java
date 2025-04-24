@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.example.vjutest.Model.ClassEntity.VisibilityScope;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,7 +24,12 @@ public class ClassEntityDTO {
     private String userImage;
     private String teacherImage;
     private LocalDateTime createdAt;
-    private List<?> users;
-    private List<?> teachers;
+    private VisibilityScope visibility;
+    private Long departmentId;
+    private String departmentName;
+    private Long majorId;
+    private String majorName;
+    private List<UserDTO> users;
+    private List<UserDTO> teachers;
     private List<JoinRequestDTO> joinRequests;
 }

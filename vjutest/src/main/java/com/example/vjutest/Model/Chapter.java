@@ -1,9 +1,9 @@
 package com.example.vjutest.Model;
-
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -22,38 +22,28 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Getter
-@Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "questions")
-public class Question {
+@Getter
+@Setter
+@Table(name = "chapters")
+public class Chapter {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", nullable = false, length = 200)
+    @Column (name = "name", nullable = false, length = 100)
     private String name;
-
-    @Column(name = "difficulty", nullable = false)
-    private Integer difficulty;
-
-    @Column(name = "is_public", nullable = false)
-    private Boolean isPublic;
-
-    @Column(name = "is_completed")
-    private Boolean isCompleted = false;
-
+    
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "chapter_id", nullable = false)
-    private Chapter chapter;
+    private Subject subject;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
-    
-    @CreationTimestamp 
+
+    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -61,14 +51,14 @@ public class Question {
     @JoinColumn(name = "modified_by", nullable = false)
     private User modifiedBy;
 
-    @CreationTimestamp 
-    @Column(name = "modified_at", updatable = false)
+    @UpdateTimestamp
+    @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
 
-    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<ExamQuestion> examQuestions;
+    @OneToMany(mappedBy = "chapter", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<Question> questions;
 
-    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Answer> answers;
-
+    public Long getQuestionTotal() {
+        return (long) (questions != null ? questions.size() : 0);
+    } 
 }

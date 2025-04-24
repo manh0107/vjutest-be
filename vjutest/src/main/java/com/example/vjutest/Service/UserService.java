@@ -17,6 +17,10 @@ import com.example.vjutest.Mapper.UserMapper;
 import com.example.vjutest.Exception.ResourceNotFoundException;
 import com.example.vjutest.Exception.UnauthorizedException;
 import com.example.vjutest.Exception.ValidationException;
+import com.example.vjutest.Model.Department;
+import com.example.vjutest.Repository.DepartmentRepository;
+import com.example.vjutest.Model.Major;
+import com.example.vjutest.Repository.MajorRepository;
 
 @Service
 @Transactional
@@ -26,13 +30,17 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final DepartmentRepository departmentRepository;
+    private final MajorRepository majorRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository, RoleRepository roleRepository, UserMapper userMapper, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, RoleRepository roleRepository, UserMapper userMapper, PasswordEncoder passwordEncoder, DepartmentRepository departmentRepository, MajorRepository majorRepository) {
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userMapper = userMapper;
+        this.departmentRepository = departmentRepository;
+        this.majorRepository = majorRepository;
     }
 
     private void checkAdminRole(User user) {
@@ -81,6 +89,19 @@ public class UserService {
         user.setIsEnabled(user.getIsEnabled());
         user.setPassword(passwordEncoder.encode(user.getPassword()));
     
+        // Set department and major if provided
+        if (user.getDepartment() != null && user.getDepartment().getId() != 0) {
+            Department department = departmentRepository.findById(user.getDepartment().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khoa với ID: " + user.getDepartment().getId()));
+            user.setDepartment(department);
+        }
+
+        if (user.getMajor() != null && user.getMajor().getId() != 0) {
+            Major major = majorRepository.findById(user.getMajor().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành với ID: " + user.getMajor().getId()));
+            user.setMajor(major);
+        }
+    
         User savedUser = userRepository.save(user);
         return userMapper.toDTO(savedUser);
     }
@@ -114,6 +135,20 @@ public class UserService {
             user.setEmail(updatedUser.getEmail());
         }
     
+        // Update department if provided
+        if (updatedUser.getDepartment() != null && updatedUser.getDepartment().getId() != 0) {
+            Department department = departmentRepository.findById(updatedUser.getDepartment().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khoa với ID: " + updatedUser.getDepartment().getId()));
+            user.setDepartment(department);
+        }
+
+        // Update major if provided
+        if (updatedUser.getMajor() != null && updatedUser.getMajor().getId() != 0) {
+            Major major = majorRepository.findById(updatedUser.getMajor().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành với ID: " + updatedUser.getMajor().getId()));
+            user.setMajor(major);
+        }
+    
         updateUserFields(user, updatedUser);
     
         if (updatedUser.getRole() != null && updatedUser.getRole().getId() != null) {
@@ -129,7 +164,6 @@ public class UserService {
     private void updateUserFields(User user, User updatedUser) {
         if (updatedUser.getPassword() != null) user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
         if (updatedUser.getName() != null) user.setName(updatedUser.getName());
-        if (updatedUser.getClassName() != null) user.setClassName(updatedUser.getClassName());
         if (updatedUser.getGender() != null) user.setGender(updatedUser.getGender());
         if (updatedUser.getImage() != null) user.setImage(updatedUser.getImage());
         if (updatedUser.getIsEnabled() != null) user.setIsEnabled(updatedUser.getIsEnabled());
@@ -187,6 +221,20 @@ public class UserService {
 
         validateProfileUpdate(currentUser, updatedUser);
         updateUserFields(currentUser, updatedUser);
+
+        // Update department if provided
+        if (updatedUser.getDepartment() != null && updatedUser.getDepartment().getId() != 0) {
+            Department department = departmentRepository.findById(updatedUser.getDepartment().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khoa với ID: " + updatedUser.getDepartment().getId()));
+            currentUser.setDepartment(department);
+        }
+
+        // Update major if provided
+        if (updatedUser.getMajor() != null && updatedUser.getMajor().getId() != 0) {
+            Major major = majorRepository.findById(updatedUser.getMajor().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành với ID: " + updatedUser.getMajor().getId()));
+            currentUser.setMajor(major);
+        }
 
         User savedUser = userRepository.save(currentUser);
         return userMapper.toDTO(savedUser);

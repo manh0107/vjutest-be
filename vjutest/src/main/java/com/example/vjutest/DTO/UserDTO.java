@@ -17,15 +17,19 @@ public class UserDTO {
     private String name;
     private Long code;
     private Long phoneNumber;
-    private String className;
     private String gender;
     private String email;
     private String image;
     private String role;
+
+    private DepartmentDTO department;
+    private MajorDTO major;
     
     @JsonProperty("isEnabled")
     private Boolean isEnabled;
 
+    private List<Long> createDepartments;
+    private List<Long> createMajors;
     private List<Long> createClasses;
     private List<Long> createSubjects;
     private List<Long> createdExams;

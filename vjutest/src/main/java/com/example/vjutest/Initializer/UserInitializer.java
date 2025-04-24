@@ -41,9 +41,8 @@ public class UserInitializer implements CommandLineRunner {
                 User adminUser = new User();
                 adminUser.setName("Administrator");
                 adminUser.setEmail("vjutestapp@gmail.com");
-                adminUser.setCode(00000000L);
-                adminUser.setPhoneNumber(0000000000L);
-                adminUser.setClassName("000000");
+                adminUser.setCode(99999999L);
+                adminUser.setPhoneNumber(9999999999L);
                 adminUser.setGender("000000");
                 adminUser.setPassword(passwordEncoder.encode("vjutestadmin"));
                 adminUser.setImage("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg");

@@ -1,28 +1,19 @@
 package com.example.vjutest.Mapper;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.example.vjutest.DTO.SubjectDTO;
-import com.example.vjutest.DTO.ExamQuestionDTO; // Added import
-import com.example.vjutest.DTO.QuestionDTO; // Added import
+import com.example.vjutest.DTO.QuestionDTO;
 import com.example.vjutest.Model.Question;
 
 
 @Component
 public class QuestionMapper {
-
-    private final SubjectMapper subjectMapper;
-    private final ExamQuestionMapper examQuestionMapper;
+    private final ChapterMapper chapterMapper;
 
     @Autowired
-    public QuestionMapper( SubjectMapper subjectMapper, ExamQuestionMapper examQuestionMapper) {
-        this.examQuestionMapper = examQuestionMapper;
-        this.subjectMapper = subjectMapper;
+    public QuestionMapper(ChapterMapper chapterMapper) {
+        this.chapterMapper = chapterMapper;
     }
 
     //Simple DTO
@@ -35,38 +26,20 @@ public class QuestionMapper {
         dto.setId(question.getId());
         dto.setName(question.getName());
         dto.setDifficulty(question.getDifficulty());
-        dto.setIsPublic(question.getIsPublic());
         dto.setIsCompleted(question.getIsCompleted());
         dto.setCreatedAt(question.getCreatedAt());
         dto.setModifiedAt(question.getModifiedAt());
 
         if (question.getCreatedBy() != null) {
-            dto.setCreatedBy(question.getCreatedBy().getId());
+            dto.setCreatedById(question.getCreatedBy().getId());
             dto.setCreatedByName(question.getCreatedBy().getName());
         }
 
-        if (question.getSubject() != null) {
-            SubjectDTO subjectDTO = new SubjectDTO();
-            subjectDTO.setId(question.getSubject().getId());
-            subjectDTO.setName(question.getSubject().getName());
-            dto.setSubject(subjectDTO);
+        if (question.getChapter() != null) {
+            dto.setChapterId(question.getChapter().getId());
+            dto.setChapterName(question.getChapter().getName());
         }
 
-        if (question.getExamQuestions() != null) {
-            ExamQuestionDTO examQuestionDTO = new ExamQuestionDTO();
-            question.getExamQuestions().forEach(examQuestion -> {
-                if (examQuestion.getExam() != null) {
-                    examQuestionDTO.setId(examQuestion.getExam().getId());
-                    examQuestionDTO.setExamName(examQuestion.getExam().getName());
-                }
-                if (examQuestion.getQuestion() != null) {
-                    examQuestionDTO.setId(examQuestion.getQuestion().getId());
-                    examQuestionDTO.setSubjectName(examQuestion.getQuestion().getName());
-                }
-            });
-            dto.setExamQuestions(Collections.singletonList(examQuestionDTO));
-        }
-        
         return dto;
     }
 
@@ -80,25 +53,17 @@ public class QuestionMapper {
         dto.setId(question.getId());
         dto.setName(question.getName());
         dto.setDifficulty(question.getDifficulty());
-        dto.setIsPublic(question.getIsPublic());
         dto.setIsCompleted(question.getIsCompleted());
         dto.setCreatedAt(question.getCreatedAt());
         dto.setModifiedAt(question.getModifiedAt());
 
         if (question.getCreatedBy() != null) {
-            dto.setCreatedBy(question.getCreatedBy().getId());
+            dto.setCreatedById(question.getCreatedBy().getId());
             dto.setCreatedByName(question.getCreatedBy().getName());
         }
 
-        if (question.getExamQuestions() != null) {
-            List<ExamQuestionDTO> examQuestionDTOs = question.getExamQuestions().stream()
-                .map(examQuestionMapper::toFullDTO)
-                .collect(Collectors.toList());
-            dto.setExamQuestions(examQuestionDTOs);
-        }
-
-        if (question.getSubject() != null) {
-            dto.setSubject(subjectMapper.toDTO(question.getSubject()));
+        if (question.getChapter() !=null) {
+            dto.setChapter(chapterMapper.toDTO(question.getChapter()));
         }
 
         return dto;

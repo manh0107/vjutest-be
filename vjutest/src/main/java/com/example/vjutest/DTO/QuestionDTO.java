@@ -28,18 +28,16 @@ public class QuestionDTO {
     private LocalDateTime createdAt;
     private LocalDateTime modifiedAt;
 
-    private Long createdBy;
+    private Long createdById;
     private String createdByName;
 
-    private Long modifiedBy;
+    private Long modifiedById;
+    private String modifiedByName;
 
-    private Long subjectId;
-    private String subjectName;
+    private Long chapterId;
+    private String chapterName;
 
-    private Long answerId;
-    private String answerName;
+    private ChapterDTO chapter;
 
-    private SubjectDTO subject;
     private List<ExamQuestionDTO> examQuestions;
-    private List<AnswerDTO> answers;
 }

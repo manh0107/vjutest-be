@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import com.example.vjutest.DTO.ExamDTO;
 import com.example.vjutest.DTO.SubjectDTO;
 import com.example.vjutest.Model.Exam;
+import com.example.vjutest.Model.Exam.ExamVisibility;
 import com.example.vjutest.Model.Exam.Status;
 
 @Component
@@ -36,8 +37,9 @@ public class ExamMapper {
         dto.setDurationTime(exam.getDurationTime());
         dto.setPassScore(exam.getPassScore());
         dto.setMaxScore(exam.getMaxScore());
-        dto.setStatus(exam.getStatus());
         dto.setIsPublic(exam.getIsPublic());
+        dto.setStatus(exam.getStatus());
+        dto.setVisibility(exam.getVisibility());
         dto.setStartAt(exam.getStartAt());
         dto.setEndAt(exam.getEndAt());
         dto.setCreatedAt(exam.getCreatedAt());
@@ -85,8 +87,9 @@ public class ExamMapper {
         dto.setDurationTime(exam.getDurationTime());
         dto.setPassScore(exam.getPassScore());
         dto.setMaxScore(exam.getMaxScore());
-        dto.setStatus(exam.getStatus());
         dto.setIsPublic(exam.getIsPublic());
+        dto.setStatus(exam.getStatus());
+        dto.setVisibility(exam.getVisibility());
         dto.setStartAt(exam.getStartAt());
         dto.setEndAt(exam.getEndAt());
         dto.setCreatedAt(exam.getCreatedAt());
@@ -126,7 +129,14 @@ public class ExamMapper {
         } else {
             exam.setStatus(Status.DRAFT); // Giá trị mặc định nếu `status` là null
         }
-    
+
+        if (dto.getVisibility() != null) {
+            try {
+                exam.setVisibility(ExamVisibility.valueOf(dto.getVisibility().name())); 
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid status: " + dto.getStatus());
+            }
+        } 
         return exam;
     }
     

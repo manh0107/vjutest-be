@@ -12,6 +12,7 @@ import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.Model.User;
 import com.example.vjutest.Service.UserService;
 import com.example.vjutest.User.CustomUserDetails;
+import com.example.vjutest.Mapper.UserMapper;
 
 @RestController
 @RequestMapping("/users")
@@ -19,10 +20,12 @@ import com.example.vjutest.User.CustomUserDetails;
 public class UserController {
 
     private final UserService userService;
+    private final UserMapper userMapper;
 
     @Autowired
-    public UserController(UserService userService) {
+    public UserController(UserService userService, UserMapper userMapper) {
         this.userService = userService;
+        this.userMapper = userMapper;
     }
 
     // Chỉ admin có quyền tạo người dùng
@@ -103,9 +106,10 @@ public class UserController {
     // Cập nhật thông tin cá nhân
     @PreAuthorize("hasRole('ROLE_USER') or hasRole('ROLE_TEACHER')")
     @PutMapping("/update/profile")
-    public ResponseEntity<?> updateProfile(@RequestBody User user, Authentication authentication) {
+    public ResponseEntity<?> updateProfile(@RequestBody UserDTO userDTO, Authentication authentication) {
         try {
-            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  // Lấy userId từ Authentication
+            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+            User user = userMapper.toEntity(userDTO);
             UserDTO updatedUser = userService.updateProfile(userId, user);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {

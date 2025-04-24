@@ -1,7 +1,8 @@
 package com.example.vjutest.Model;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -37,7 +38,7 @@ public class Exam {
     private Long durationTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "class_subject_id", nullable = true)
+    @JoinColumn(name = "class_subject_id", referencedColumnName = "id")
     private ClassSubject classSubject;
 
     @Column(name = "max_score")
@@ -46,6 +47,10 @@ public class Exam {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private Status status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false)
+    private ExamVisibility visibility;
 
     @Column(name = "pass_score", nullable = false)
     private Integer passScore;
@@ -60,7 +65,7 @@ public class Exam {
     private LocalDateTime endAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = false)
+    @JoinColumn(name = "created_by_id", referencedColumnName = "id")
     private User createdBy;
 
     @CreationTimestamp
@@ -75,20 +80,28 @@ public class Exam {
     @Column(name = "modified_at")
     private LocalDateTime modifiedAt;
 
-    @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<ExamQuestion> examQuestions;
+    @OneToMany(mappedBy = "exam", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<Result> results = new HashSet<>();
 
-    @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<UserAnswer> userAnswers;
+    @OneToMany(mappedBy = "exam", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private Set<ExamQuestion> examQuestions = new HashSet<>();
 
-    @ManyToOne
-    @JoinColumn(name = "subject_id", nullable = false) // Bắt buộc phải có môn học
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id", referencedColumnName = "id")
     private Subject subject;
 
    
     public enum Status {
         DRAFT, PUBLISHED, CLOSED
     }
+
+    public enum ExamVisibility {
+        PUBLIC,        // Tất cả sinh viên đều thấy
+        DEPARTMENT,    // Chỉ sinh viên trong khoa thấy
+        MAJOR,         // Chỉ sinh viên trong ngành thấy
+        CLASS          // Chỉ sinh viên trong lớp cụ thể thấy
+    }
+    
 
     public int getTotalQuestions() {
         if (examQuestions == null) return 0;
