@@ -65,12 +65,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
-            if (SecurityContextHolder.getContext().getAuthentication() == null &&
-                jwtTokenProvider.isTokenValid(jwt, userDetails)) {
-
+            if (jwtTokenProvider.isTokenValid(jwt, userDetails)) {
                 Token tokenFromDb = tokenRepository.findByToken(jwt).orElse(null);
 
-                // Chỉ xử lý nếu token là ACCESS (không xử lý REFRESH trong filter này)
                 if (tokenFromDb != null && 
                     tokenFromDb.getTokenType() == TokenType.ACCESS && 
                     !tokenFromDb.getIsExpired() && 
@@ -83,10 +80,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     System.out.println("Xác thực thành công cho: " + userEmail);
                 } else {
                     System.out.println("Token không hợp lệ hoặc đã bị thu hồi: " + jwt.substring(0, 10) + "...");
+                    SecurityContextHolder.clearContext();
                 }
+            } else {
+                System.out.println("Token không hợp lệ cho user: " + userEmail);
+                SecurityContextHolder.clearContext();
             }
         } catch (Exception e) {
             System.out.println("Lỗi xác thực JWT: " + e.getMessage());
+            SecurityContextHolder.clearContext();
         }
 
         chain.doFilter(request, response);

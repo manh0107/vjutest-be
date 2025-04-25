@@ -15,6 +15,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByRole(Role role);
     Optional<User> findByEmail(String email);
     Optional<User> findByVerificationToken(String token);
+    List<User> findByRole_Name(String roleName);
 
     boolean existsByEmail(String email);
     boolean existsByEmailIgnoreCase(String email);
@@ -23,9 +24,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
     boolean existsByCodeAndIdNot(Long code, Long id);
     boolean existsByPhoneNumberAndIdNot(Long phoneNumber, Long id);
+    boolean existsByName(String name);
 
     @EntityGraph(attributePaths = {
         "role", 
+        "department",
+        "major",
         "classes", 
         "createClasses",
         "createSubjects",

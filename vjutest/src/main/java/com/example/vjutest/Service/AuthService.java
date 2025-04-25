@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,9 @@ import com.example.vjutest.User.CustomUserDetails;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
+
+import org.hibernate.Hibernate;
 
 
 @Service
@@ -145,6 +149,8 @@ public class AuthService {
                 throw new RuntimeException("Tài khoản chưa được kích hoạt! Vui lòng kiểm tra email.");
             }
 
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
             // Tạo access & refresh token
             String accessToken = jwtTokenProvider.generateToken(userDetails);
             String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
@@ -157,15 +163,17 @@ public class AuthService {
             // Đặt refresh token vào cookie
             Cookie cookie = new Cookie("refreshToken", refreshToken);
             cookie.setHttpOnly(true);
-            cookie.setPath("/"); // Toàn hệ thống
+            cookie.setSecure(false); 
+            cookie.setPath("/");
             cookie.setMaxAge(7 * 24 * 60 * 60); // 7 ngày
             response.addCookie(cookie);
 
+           
             return new AuthResponse(accessToken, "Đăng nhập thành công!");
 
         } catch (Exception e) {
             System.out.println("Lỗi xác thực: " + e.getMessage());
-            throw new RuntimeException("Đăng nhập thất bại!");
+            throw new RuntimeException("Đăng nhập thất bại: " + e.getMessage());
         }
     }
 
@@ -312,19 +320,31 @@ public class AuthService {
         tokenRepository.save(newToken);
     }
 
-    //Lấy thông tin người dùng khi đăng nhập thành công
+    @Transactional
     public UserDTO getUserInfo(Authentication authentication) {
         if(authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("Người dùng chưa đăng nhập!");
         }
-
+    
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        User user = userDetails.getUser();
+        Long userId = userDetails.getUser().getId();
         
-        // Sử dụng phương thức với collections để lấy đầy đủ thông tin
-        User userWithCollections = userRepository.findById(user.getId())
+        // Dùng repository để load user với đầy đủ thông tin
+        User userWithDetails = userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("User not found"));
-            
-        return userMapper.toDTO(userWithCollections);
+        
+        // Đảm bảo các relationship được load
+        Hibernate.initialize(userWithDetails.getRole());
+        
+        // Optional: Chỉ khởi tạo các relationship khác nếu chúng tồn tại
+        if (userWithDetails.getDepartment() != null) {
+            Hibernate.initialize(userWithDetails.getDepartment());
+        }
+        
+        if (userWithDetails.getMajor() != null) {
+            Hibernate.initialize(userWithDetails.getMajor());
+        }
+        
+        return userMapper.toDTO(userWithDetails);
     }
 }
