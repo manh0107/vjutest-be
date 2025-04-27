@@ -40,9 +40,9 @@ public class ClassEntityController {
             @RequestParam String classCode,
             @RequestParam String description,
             @RequestParam Long userId,
-            @RequestParam Long departmentId,
-            @RequestParam Long majorId) {
-        ClassEntity createdClass = classEntityService.createClass(name, classCode, description, userId, departmentId, majorId);
+            @RequestParam List<Long> departmentIds,
+            @RequestParam List<Long> majorIds) {
+        ClassEntity createdClass = classEntityService.createClass(name, classCode, description, userId, departmentIds, majorIds);
         return ResponseEntity.ok(classEntityMapper.toDTO(createdClass));
     }
 
@@ -86,7 +86,13 @@ public class ClassEntityController {
             @PathVariable Long id,
             @RequestBody ClassEntityDTO classDTO,
             @RequestParam Long userId) {
-        ClassEntity updatedClass = classEntityService.updateClass(id, classEntityMapper.toEntity(classDTO), userId);
+        ClassEntity updatedClass = classEntityService.updateClass(
+            id,
+            classEntityMapper.toEntity(classDTO),
+            userId,
+            classDTO.getDepartmentIds(),
+            classDTO.getMajorIds()
+        );
         return ResponseEntity.ok(classEntityMapper.toDTO(updatedClass));
     }
 

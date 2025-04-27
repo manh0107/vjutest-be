@@ -20,8 +20,7 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
     List<Exam> findByClassSubject_ClassEntity_IdAndClassSubject_Subject_Id(Long classId, Long subjectId);
     List<Exam> findByClassSubject_ClassEntity_IdAndClassSubject_Subject_IdAndCreatedBy(Long classId, Long subjectId, User createdBy);
     List<Exam> findByClassSubject_ClassEntity_IdAndClassSubject_Subject_IdAndIsPublicTrue(Long classId, Long subjectId);
-
     List<Exam> findByClassSubject_Subject_IdAndIsPublicTrue(Long subjectId);
-
+    List<Exam> findByCreatedBy(User createdBy);
     int countBySubject(Subject subject);
 }

@@ -4,8 +4,7 @@ import com.example.vjutest.DTO.ClassEntityDTO;
 import com.example.vjutest.DTO.JoinRequestDTO;
 import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.Model.ClassEntity;
-import com.example.vjutest.Model.Department;
-import com.example.vjutest.Model.Major;
+import com.example.vjutest.Model.ClassEntity.VisibilityScope;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,14 +41,14 @@ public class ClassEntityMapper {
             dto.setCreateByImage(entity.getCreatedBy().getImage());
         }
 
-        if (entity.getDepartment() != null) {
-            dto.setDepartmentId(entity.getDepartment().getId());
-            dto.setDepartmentName(entity.getDepartment().getName());
+        // Map majors to list of ids
+        if (entity.getMajors() != null && !entity.getMajors().isEmpty()) {
+            dto.setMajorIds(entity.getMajors().stream().map(m -> m.getId()).toList());
         }
 
-        if (entity.getMajor() != null) {
-            dto.setMajorId(entity.getMajor().getId());
-            dto.setMajorName(entity.getMajor().getName());
+        // Map departments to list of ids
+        if (entity.getDepartments() != null && !entity.getDepartments().isEmpty()) {
+            dto.setDepartmentIds(entity.getDepartments().stream().map(d -> d.getId()).toList());
         }
 
         if (entity.getUsers() != null) {
@@ -91,18 +90,16 @@ public class ClassEntityMapper {
         entity.setClassCode(dto.getClassCode());
         entity.setDescription(dto.getDescription());
         entity.setCreatedAt(dto.getCreatedAt());
-        entity.setVisibility(dto.getVisibility());
 
-        if (dto.getDepartmentId() != null) {
-            Department department = new Department();
-            department.setId(dto.getDepartmentId());
-            entity.setDepartment(department);
-        }
+         if (dto.getVisibility() != null) {
+            try {
+                entity.setVisibility(VisibilityScope.valueOf(dto.getVisibility().name())); 
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid status: " + dto.getVisibility());
+            }
+        } else {
+            entity.setVisibility(VisibilityScope.PUBLIC);
 
-        if (dto.getMajorId() != null) {
-            Major major = new Major();
-            major.setId(dto.getMajorId());
-            entity.setMajor(major);
         }
 
         return entity;
@@ -151,7 +148,17 @@ public class ClassEntityMapper {
                 .map(userMapper::toDTO) 
                 .collect(Collectors.toList()) 
             : null;
-        dto.setUsers(userDTOs);  
+        dto.setUsers(userDTOs);
+
+         // Map majors to list of ids
+         if (entity.getMajors() != null && !entity.getMajors().isEmpty()) {
+            dto.setMajorIds(entity.getMajors().stream().map(m -> m.getId()).toList());
+        }
+
+        // Map departments to list of ids
+        if (entity.getDepartments() != null && !entity.getDepartments().isEmpty()) {
+            dto.setDepartmentIds(entity.getDepartments().stream().map(d -> d.getId()).toList());
+        }
 
         return dto;
     }

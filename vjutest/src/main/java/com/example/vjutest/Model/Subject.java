@@ -70,6 +70,14 @@ public class Subject {
     )
     private Set<Major> majors = new HashSet<>();
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "subject_department",
+        joinColumns = @JoinColumn(name = "subject_id", referencedColumnName = "id"),
+        inverseJoinColumns = @JoinColumn(name = "department_id", referencedColumnName = "id")
+    )
+    private Set<Department> departments = new HashSet<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id", referencedColumnName = "id")
     private User createdBy;

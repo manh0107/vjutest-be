@@ -42,17 +42,15 @@ public class SubjectController {
     public ResponseEntity<?> createSubject(Authentication authentication, @RequestBody SubjectDTO subjectDTO) {
         Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         try {
-            if (subjectDTO.getMajorId() == null) {
-                return ResponseEntity.badRequest().body("Vui lòng chọn ngành học cho môn học");
-            }
-
             Subject createdSubject = subjectService.createSubject(
                 subjectDTO.getName(),
                 subjectDTO.getSubjectCode(),
                 subjectDTO.getDescription(),
                 subjectDTO.getCreditHour(),
                 userId,
-                subjectDTO.getMajorId()
+                subjectDTO.getMajorIds(),
+                subjectDTO.getDepartmentIds(),
+                subjectDTO.getVisibility()
             );
             return ResponseEntity.ok(subjectMapper.toDTO(createdSubject));
         } catch (Exception e) {
@@ -92,7 +90,9 @@ public class SubjectController {
                 subjectDTO.getDescription(),
                 subjectDTO.getCreditHour(),
                 userId,
-                subjectDTO.getMajorId()
+                subjectDTO.getMajorIds(),
+                subjectDTO.getDepartmentIds(),
+                subjectDTO.getVisibility()
             );
             return ResponseEntity.ok(subjectMapper.toDTO(updatedSubject));
         } catch (Exception e) {

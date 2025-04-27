@@ -1,6 +1,8 @@
 package com.example.vjutest.DTO;
 
 import java.time.LocalDateTime;
+import java.util.List;
+
 import com.example.vjutest.Model.Subject.VisibilityScope;
 
 import lombok.AllArgsConstructor;
@@ -25,5 +27,6 @@ public class SubjectDTO {
     private Long modifiedById;
     private String modifiedByName;
     private VisibilityScope visibility;
-    private Long majorId;
+    private List<Long> majorIds;
+    private List<Long> departmentIds;
 }

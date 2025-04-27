@@ -9,6 +9,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.vjutest.DTO.UserDTO;
+import com.example.vjutest.DTO.ClassEntityDTO;
+import com.example.vjutest.DTO.ExamDTO;
+import com.example.vjutest.DTO.QuestionDTO;
 import com.example.vjutest.Model.User;
 import com.example.vjutest.Service.UserService;
 import com.example.vjutest.User.CustomUserDetails;
@@ -114,6 +117,51 @@ public class UserController {
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // Lấy danh sách lớp học đã tạo
+    @GetMapping("/{userId}/created-classes")
+    public ResponseEntity<List<ClassEntityDTO>> getUserCreatedClasses(@PathVariable Long userId) {
+        try {
+            List<ClassEntityDTO> classes = userService.getUserCreatedClasses(userId);
+            return ResponseEntity.ok(classes);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // Lấy danh sách bài kiểm tra đã tạo
+    @GetMapping("/{userId}/created-exams")
+    public ResponseEntity<List<ExamDTO>> getUserCreatedExams(@PathVariable Long userId) {
+        try {
+            List<ExamDTO> exams = userService.getUserCreatedExams(userId);
+            return ResponseEntity.ok(exams);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // Lấy danh sách câu hỏi đã tạo
+    @GetMapping("/{userId}/created-questions")
+    public ResponseEntity<List<QuestionDTO>> getUserCreatedQuestions(@PathVariable Long userId) {
+        try {
+            List<QuestionDTO> questions = userService.getUserCreatedQuestions(userId);
+            return ResponseEntity.ok(questions);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // Lấy danh sách lớp học đang dạy (chỉ dành cho giáo viên)
+    @PreAuthorize("hasRole('ROLE_TEACHER')")
+    @GetMapping("/{userId}/teaching-classes")
+    public ResponseEntity<List<ClassEntityDTO>> getTeacherClasses(@PathVariable Long userId) {
+        try {
+            List<ClassEntityDTO> classes = userService.getTeacherClasses(userId);
+            return ResponseEntity.ok(classes);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 }

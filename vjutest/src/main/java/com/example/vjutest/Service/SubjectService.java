@@ -3,6 +3,7 @@ package com.example.vjutest.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import com.example.vjutest.Repository.QuestionRepository;
 import com.example.vjutest.Repository.SubjectRepository;
 import com.example.vjutest.Repository.UserRepository;
 import com.example.vjutest.Repository.MajorRepository;
+import com.example.vjutest.Repository.DepartmentRepository;
 import com.example.vjutest.Exception.UnauthorizedAccessException;
 import com.example.vjutest.Exception.ResourceNotFoundException;
 
@@ -35,12 +37,13 @@ public class SubjectService {
     private final ClassSubjectRepository classSubjectRepository;
     private final EntityManager entityManager;
     private final MajorRepository majorRepository;
+    private final DepartmentRepository departmentRepository;
 
     @Autowired
     public SubjectService(SubjectRepository subjectRepository, UserRepository userRepository, 
                           ExamRepository examRepository, QuestionRepository questionRepository,
                           ClassSubjectRepository classSubjectRepository, EntityManager entityManager,
-                          MajorRepository majorRepository) {
+                          MajorRepository majorRepository, DepartmentRepository departmentRepository) {
         this.subjectRepository = subjectRepository;
         this.userRepository = userRepository;
         this.examRepository = examRepository;
@@ -48,26 +51,17 @@ public class SubjectService {
         this.classSubjectRepository = classSubjectRepository;
         this.entityManager = entityManager;
         this.majorRepository = majorRepository;
+        this.departmentRepository = departmentRepository;
     }
 
+    @Transactional
     public Subject createSubject(String name, String subjectCode, String description, Integer creditHour, 
-                               Long userId, Long majorId) {
+                               Long userId, List<Long> majorIds, List<Long> departmentIds, Subject.VisibilityScope visibility) {
         User createBy = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
     
         if (!createBy.getRole().getName().equalsIgnoreCase("teacher") && !createBy.getRole().getName().equalsIgnoreCase("admin")) {
             throw new UnauthorizedAccessException("Chỉ giáo viên và quản trị viên mới có thể tạo môn học");
-        }
-
-        // Kiểm tra major có tồn tại không
-        Major major = majorRepository.findById(majorId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành: " + majorId));
-
-        // Kiểm tra quyền truy cập
-        if (!"admin".equals(createBy.getRole().getName())) {
-            if (!major.getDepartment().equals(createBy.getDepartment())) {
-                throw new UnauthorizedAccessException("Bạn không có quyền tạo môn học cho ngành này");
-            }
         }
 
         Subject newSubject = new Subject();
@@ -77,8 +71,23 @@ public class SubjectService {
         newSubject.setCreditHour(creditHour);
         newSubject.setCreatedBy(createBy);
         newSubject.setModifiedBy(createBy);
-        newSubject.setVisibility(Subject.VisibilityScope.MAJOR); // Mặc định là theo ngành
-        newSubject.getMajors().add(major); // Thêm môn học vào ngành
+        newSubject.setVisibility(visibility);
+
+        if (visibility == Subject.VisibilityScope.DEPARTMENT) {
+            if (departmentIds == null || departmentIds.isEmpty()) {
+                throw new RuntimeException("Vui lòng chọn ít nhất một khoa cho môn học theo khoa.");
+            }
+            Set<com.example.vjutest.Model.Department> depts = new java.util.HashSet<>(departmentRepository.findAllById(departmentIds));
+            newSubject.setDepartments(depts);
+        }
+        if (visibility == Subject.VisibilityScope.MAJOR) {
+            if (majorIds == null || majorIds.isEmpty()) {
+                throw new RuntimeException("Vui lòng chọn ít nhất một ngành cho môn học theo ngành.");
+            }
+            Set<Major> majors = new java.util.HashSet<>(majorRepository.findAllById(majorIds));
+            newSubject.setMajors(majors);
+        }
+        // Nếu PUBLIC thì không cần set gì thêm
 
         return subjectRepository.save(newSubject);
     }
@@ -140,64 +149,48 @@ public class SubjectService {
         return Optional.empty();
     }
 
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional
     public Subject updateSubject(Long subjectId, String name, String subjectCode, String description, 
-                               Integer creditHour, Long userId, Long majorId) {
+                               Integer creditHour, Long userId, List<Long> majorIds, List<Long> departmentIds, Subject.VisibilityScope visibility) {
         User updateBy = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng!"));
-    
-        if (!updateBy.getRole().getName().equalsIgnoreCase("teacher") && 
-            !updateBy.getRole().getName().equalsIgnoreCase("admin")) {
-            throw new UnauthorizedAccessException("Chỉ giáo viên và quản trị viên mới có thể cập nhật môn học!");
-        }
     
         Subject subject = subjectRepository.findById(subjectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy môn học!"));
     
-        // Kiểm tra quyền truy cập
-        if (!"admin".equals(updateBy.getRole().getName())) {
-            if (subject.getVisibility() == Subject.VisibilityScope.DEPARTMENT) {
-                if (!subject.getMajors().stream()
-                        .anyMatch(major -> major.getDepartment().equals(updateBy.getDepartment()))) {
-                    throw new UnauthorizedAccessException("Bạn không có quyền cập nhật môn học này!");
-                }
-            } else {
-                if (!subject.getMajors().stream()
-                        .anyMatch(major -> major.equals(updateBy.getMajor()))) {
-                    throw new UnauthorizedAccessException("Bạn không có quyền cập nhật môn học này!");
-                }
-            }
+        // Kiểm tra quyền cập nhật
+        if (!"admin".equals(updateBy.getRole().getName()) && 
+            !(updateBy.getRole().getName().equals("teacher") && subject.getCreatedBy().equals(updateBy))) {
+            throw new UnauthorizedAccessException("Bạn không có quyền cập nhật môn học này!");
         }
 
-        // Kiểm tra major mới nếu được cung cấp
-        if (majorId != null) {
-            Major newMajor = majorRepository.findById(majorId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành: " + majorId));
-
-            // Kiểm tra quyền truy cập với major mới
-            if (!"admin".equals(updateBy.getRole().getName())) {
-                if (!newMajor.getDepartment().equals(updateBy.getDepartment())) {
-                    throw new UnauthorizedAccessException("Bạn không có quyền cập nhật môn học cho ngành này");
-                }
-            }
-
-            // Cập nhật major
-            subject.getMajors().clear();
-            subject.getMajors().add(newMajor);
-        }
-    
-        // Kiểm tra mã môn học có trùng với môn học khác không
-        Subject subjectWithSameCode = subjectRepository.findBySubjectCode(subjectCode).orElse(null);
-        if (subjectWithSameCode != null && !subjectWithSameCode.getId().equals(subjectId)) {
-            throw new RuntimeException("Mã môn học đã tồn tại cho môn học khác");
-        }
-    
         subject.setName(name);
         subject.setSubjectCode(subjectCode);
         subject.setDescription(description);
         subject.setCreditHour(creditHour);
         subject.setModifiedBy(updateBy);
-    
+        subject.setVisibility(visibility);
+
+        // Xóa các liên kết cũ
+        subject.getDepartments().clear();
+        subject.getMajors().clear();
+
+        if (visibility == Subject.VisibilityScope.DEPARTMENT) {
+            if (departmentIds == null || departmentIds.isEmpty()) {
+                throw new RuntimeException("Vui lòng chọn ít nhất một khoa cho môn học theo khoa.");
+            }
+            Set<com.example.vjutest.Model.Department> depts = new java.util.HashSet<>(departmentRepository.findAllById(departmentIds));
+            subject.setDepartments(depts);
+        }
+        if (visibility == Subject.VisibilityScope.MAJOR) {
+            if (majorIds == null || majorIds.isEmpty()) {
+                throw new RuntimeException("Vui lòng chọn ít nhất một ngành cho môn học theo ngành.");
+            }
+            Set<Major> majors = new java.util.HashSet<>(majorRepository.findAllById(majorIds));
+            subject.setMajors(majors);
+        }
+        // Nếu PUBLIC thì không cần set gì thêm
+
         return subjectRepository.save(subject);
     }
     

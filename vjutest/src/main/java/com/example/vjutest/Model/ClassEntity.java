@@ -27,13 +27,17 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 @Setter
 @Getter
 @Entity
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name="classes", uniqueConstraints = @UniqueConstraint(columnNames = {"id", "created_by_id"}))
 public class ClassEntity {
     
@@ -68,13 +72,22 @@ public class ClassEntity {
     @JoinColumn(name = "created_by_id", referencedColumnName = "id")
     private User createdBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id", referencedColumnName = "id")
-    private Department department;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "class_majors",
+        joinColumns = @JoinColumn(name = "class_id", referencedColumnName = "id"),
+        inverseJoinColumns = @JoinColumn(name = "major_id", referencedColumnName = "id")
+    )
+    private Set<Major> majors = new HashSet<>();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "major_id", referencedColumnName = "id")
-    private Major major;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "class_departments",
+        joinColumns = @JoinColumn(name = "class_id", referencedColumnName = "id"),
+        inverseJoinColumns = @JoinColumn(name = "department_id", referencedColumnName = "id")
+    )
+    private Set<Department> departments = new HashSet<>();
+
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -97,17 +110,6 @@ public class ClassEntity {
 
     @OneToMany(mappedBy = "classEntity", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     private Set<ClassSubject> classSubjects = new HashSet<>();
-
-    public ClassEntity() {}
-
-    public ClassEntity(String name, String classCode, String description, User createdBy) {
-        this.name = name;
-        this.classCode = classCode;
-        this.description = description;
-        this.createdBy = createdBy;
-        this.department = createdBy.getDepartment();
-        this.major = createdBy.getMajor();
-    }
 
     @PrePersist
     public void prePersist() {

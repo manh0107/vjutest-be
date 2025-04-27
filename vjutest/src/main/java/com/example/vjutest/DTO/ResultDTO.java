@@ -20,15 +20,15 @@ public class ResultDTO {
     public Long userId;
     public String userName;
     public Integer score;
-    public Long durationTime;
-    public LocalDateTime startedAt;
-    public LocalDateTime endedAt;
-    public LocalDateTime submittedAt;
-
-    public String passTest;
+    public LocalDateTime startTime;
+    public LocalDateTime endTime;
+    public LocalDateTime submitTime;
     
     @JsonProperty("isSubmitted")
     public Boolean isSubmitted;
+
+    @JsonProperty("isPassed")
+    public Boolean isPassed;
 
     public UserDTO user;
     public ExamDTO exam;

@@ -47,6 +47,9 @@ public class UserAnswer {
     @Column(name = "is_submitted", nullable = false)
     private Boolean isSubmitted = false;
 
+    @Column(name = "is_marked", nullable = false)
+    private Boolean isMarked = false;
+
     @CreationTimestamp 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createAt;

@@ -90,7 +90,15 @@ public class Exam {
     @JoinColumn(name = "subject_id", referencedColumnName = "id")
     private Subject subject;
 
-   
+    @Column(name = "max_attempts", nullable = false)
+    private Integer maxAttempts = 1;
+
+    @Column(name = "random_questions", nullable = false)
+    private Boolean randomQuestions = false;
+
+    @Column(name = "questions_count")
+    private Integer questionsCount;
+
     public enum Status {
         DRAFT, PUBLISHED, CLOSED
     }
@@ -129,5 +137,31 @@ public class Exam {
         if (!this.examCode.startsWith("E-")) {
             this.examCode = "E-" + this.examCode;
         }
+    }
+
+    public boolean canStartExam(User student) {
+        LocalDateTime now = LocalDateTime.now();
+        return this.status == Status.PUBLISHED &&
+               now.isAfter(this.startAt) &&
+               now.isBefore(this.endAt) &&
+               hasAccessToExam(student);
+    }
+
+    private boolean hasAccessToExam(User student) {
+        if (this.visibility == ExamVisibility.PUBLIC) {
+            return true;
+        }
+        if (this.visibility == ExamVisibility.DEPARTMENT) {
+            return this.classSubject.getClassEntity().getDepartments().stream()
+                .anyMatch(department -> department.equals(student.getDepartment()));
+        }
+        if (this.visibility == ExamVisibility.MAJOR) {
+            return this.classSubject.getClassEntity().getMajors().stream()
+                .anyMatch(major -> major.equals(student.getMajor()));
+        }
+        if (this.visibility == ExamVisibility.CLASS) {
+            return this.classSubject.getClassEntity().getUsers().contains(student);
+        }
+        return false;
     }
 }

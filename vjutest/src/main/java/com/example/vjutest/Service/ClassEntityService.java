@@ -3,6 +3,7 @@ package com.example.vjutest.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -66,11 +67,11 @@ public class ClassEntityService {
             return true;
         }
 
-        // Kiểm tra quyền truy cập dựa trên department và major
+        // Kiểm tra quyền truy cập dựa trên department và major (nhiều-nhiều)
         if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
-            return user.getDepartment().equals(classEntity.getDepartment());
+            return classEntity.getDepartments().stream().anyMatch(d -> d.equals(user.getDepartment()));
         } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
-            return user.getMajor().equals(classEntity.getMajor());
+            return classEntity.getMajors().stream().anyMatch(m -> m.equals(user.getMajor()));
         }
 
         return classEntity.getCreatedBy().getId().equals(userId);
@@ -78,7 +79,7 @@ public class ClassEntityService {
 
     // Tạo lớp học
     @Transactional
-    public ClassEntity createClass(String name, String classCode, String description, Long userId, Long departmentId, Long majorId) {
+    public ClassEntity createClass(String name, String classCode, String description, Long userId, List<Long> departmentIds, List<Long> majorIds) {
         User createdBy = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
 
@@ -87,21 +88,26 @@ public class ClassEntityService {
             throw new UnauthorizedAccessException("Chỉ giáo viên và quản trị viên mới có thể tạo lớp học");
         }
 
-        Department department = departmentRepository.findById(departmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khoa: " + departmentId));
-
-        Major major = majorRepository.findById(majorId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành: " + majorId));
-
         if (classEntityRepository.existsByClassCode(classCode)) {
             throw new RuntimeException("Mã lớp đã tồn tại, vui lòng chọn mã khác");
         }
 
-        ClassEntity newClassEntity = new ClassEntity(name, classCode, description, createdBy);
+        ClassEntity newClassEntity = new ClassEntity();
+        newClassEntity.setName(name);
+        newClassEntity.setClassCode(classCode);
+        newClassEntity.setDescription(description);
+        newClassEntity.setCreatedBy(createdBy);
         newClassEntity.getTeachers().add(createdBy);
-        newClassEntity.setDepartment(department);
-        newClassEntity.setMajor(major);
         newClassEntity.setVisibility(ClassEntity.VisibilityScope.MAJOR); // Mặc định là theo ngành
+
+        if (departmentIds != null && !departmentIds.isEmpty()) {
+            Set<Department> departments = new java.util.HashSet<>(departmentRepository.findAllById(departmentIds));
+            newClassEntity.setDepartments(departments);
+        }
+        if (majorIds != null && !majorIds.isEmpty()) {
+            Set<Major> majors = new java.util.HashSet<>(majorRepository.findAllById(majorIds));
+            newClassEntity.setMajors(majors);
+        }
 
         return classEntityRepository.save(newClassEntity);
     }
@@ -111,20 +117,16 @@ public class ClassEntityService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
 
-        if ("admin".equals(user.getRole().getName())) {
-            return classEntityRepository.findAll();
-        }
-
-        // Lọc lớp học theo department và major của người dùng
+        // Lọc lớp học theo department và major của người dùng (nhiều-nhiều)
         return classEntityRepository.findAll().stream()
                 .filter(classEntity -> {
                     if (classEntity.getVisibility() == ClassEntity.VisibilityScope.PUBLIC) {
                         return true;
                     }
                     if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
-                        return classEntity.getDepartment().equals(user.getDepartment());
+                        return classEntity.getDepartments().stream().anyMatch(d -> d.equals(user.getDepartment()));
                     }
-                    return classEntity.getMajor().equals(user.getMajor());
+                    return classEntity.getMajors().stream().anyMatch(m -> m.equals(user.getMajor()));
                 })
                 .collect(Collectors.toList());
     }
@@ -144,16 +146,16 @@ public class ClassEntityService {
             return Optional.of(classEntity);
         }
 
-        // Kiểm tra quyền truy cập
+        // Kiểm tra quyền truy cập (nhiều-nhiều)
         if (classEntity.getVisibility() == ClassEntity.VisibilityScope.PUBLIC) {
             return Optional.of(classEntity);
         }
         if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
-            if (classEntity.getDepartment().equals(user.getDepartment())) {
+            if (classEntity.getDepartments().stream().anyMatch(d -> d.equals(user.getDepartment()))) {
                 return Optional.of(classEntity);
             }
         } else {
-            if (classEntity.getMajor().equals(user.getMajor())) {
+            if (classEntity.getMajors().stream().anyMatch(m -> m.equals(user.getMajor()))) {
                 return Optional.of(classEntity);
             }
         }
@@ -163,7 +165,7 @@ public class ClassEntityService {
 
     // Cập nhật thông tin lớp học
     @Transactional
-    public ClassEntity updateClass(Long id, ClassEntity classEntity, Long userId) {
+    public ClassEntity updateClass(Long id, ClassEntity classEntity, Long userId, List<Long> departmentIds, List<Long> majorIds) {
         ClassEntity existingClass = classEntityRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
 
@@ -181,6 +183,16 @@ public class ClassEntityService {
                 throw new RuntimeException("Mã lớp đã tồn tại, vui lòng chọn mã khác");
             }
             existingClass.setClassCode(classEntity.getClassCode());
+        }
+
+        // Cập nhật departments và majors
+        if (departmentIds != null) {
+            Set<Department> departments = new java.util.HashSet<>(departmentRepository.findAllById(departmentIds));
+            existingClass.setDepartments(departments);
+        }
+        if (majorIds != null) {
+            Set<Major> majors = new java.util.HashSet<>(majorRepository.findAllById(majorIds));
+            existingClass.setMajors(majors);
         }
 
         return classEntityRepository.save(existingClass);
@@ -214,11 +226,11 @@ public class ClassEntityService {
 
         // Kiểm tra sinh viên có thuộc cùng department/major không
         if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
-            if (!student.getDepartment().equals(classEntity.getDepartment())) {
+            if (!classEntity.getDepartments().stream().anyMatch(d -> d.equals(student.getDepartment()))) {
                 throw new UnauthorizedAccessException("Sinh viên không thuộc cùng khoa với lớp học");
             }
         } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
-            if (!student.getMajor().equals(classEntity.getMajor())) {
+            if (!classEntity.getMajors().stream().anyMatch(m -> m.equals(student.getMajor()))) {
                 throw new UnauthorizedAccessException("Sinh viên không thuộc cùng ngành với lớp học");
             }
         }
@@ -256,11 +268,11 @@ public class ClassEntityService {
 
         // Kiểm tra sinh viên có thuộc cùng department/major không
         if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
-            if (!user.getDepartment().equals(classEntity.getDepartment())) {
+            if (!classEntity.getDepartments().stream().anyMatch(d -> d.equals(user.getDepartment()))) {
                 throw new UnauthorizedAccessException("Bạn không thuộc cùng khoa với lớp học");
             }
         } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
-            if (!user.getMajor().equals(classEntity.getMajor())) {
+            if (!classEntity.getMajors().stream().anyMatch(m -> m.equals(user.getMajor()))) {
                 throw new UnauthorizedAccessException("Bạn không thuộc cùng ngành với lớp học");
             }
         }
@@ -301,11 +313,11 @@ public class ClassEntityService {
 
         // Kiểm tra giáo viên có thuộc cùng department/major không
         if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
-            if (!invitee.getDepartment().equals(classEntity.getDepartment())) {
+            if (!classEntity.getDepartments().stream().anyMatch(d -> d.equals(invitee.getDepartment()))) {
                 throw new UnauthorizedAccessException("Giáo viên không thuộc cùng khoa với lớp học");
             }
         } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
-            if (!invitee.getMajor().equals(classEntity.getMajor())) {
+            if (!classEntity.getMajors().stream().anyMatch(m -> m.equals(invitee.getMajor()))) {
                 throw new UnauthorizedAccessException("Giáo viên không thuộc cùng ngành với lớp học");
             }
         }
@@ -375,7 +387,7 @@ public class ClassEntityService {
             throw new UnauthorizedAccessException("Bạn không có quyền xem lớp học của khoa này");
         }
 
-        return classEntityRepository.findByDepartment(department);
+        return classEntityRepository.findByDepartments_Id(departmentId);
     }
 
     // Lấy danh sách lớp học theo major
@@ -390,7 +402,7 @@ public class ClassEntityService {
             throw new UnauthorizedAccessException("Bạn không có quyền xem lớp học của ngành này");
         }
 
-        return classEntityRepository.findByMajor(major);
+        return classEntityRepository.findByMajors_Id(majorId);
     }
 
     // Thay đổi visibility của lớp học
@@ -423,7 +435,7 @@ public class ClassEntityService {
         // Kiểm tra môn học có thuộc cùng major không
         if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
             boolean isSubjectInMajor = subject.getMajors().stream()
-                    .anyMatch(major -> major.equals(classEntity.getMajor()));
+                    .anyMatch(major -> classEntity.getMajors().contains(major));
             if (!isSubjectInMajor) {
                 throw new UnauthorizedAccessException("Môn học không thuộc cùng ngành với lớp học");
             }

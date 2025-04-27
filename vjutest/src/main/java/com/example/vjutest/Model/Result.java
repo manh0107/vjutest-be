@@ -2,61 +2,50 @@ package com.example.vjutest.Model;
 
 import java.time.LocalDateTime;
 
-import org.hibernate.annotations.CreationTimestamp;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.Data;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+@Data
 @Entity
-@Setter
-@Getter
-@AllArgsConstructor
-@NoArgsConstructor
 @Table(name = "results")
 public class Result {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "exam_id", nullable = false)
     private Exam exam;
 
-    @Column(name = "score", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "score")
     private Integer score;
-
-    @Column(name = "duration_time", nullable = false)
-    private Long durationTime;
-
-    @CreationTimestamp
-    @Column(name = "submitted_at", updatable = false)
-    private LocalDateTime submittedAt;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "pass_test", nullable = false)
-    private PassTest passTest;
-
-    @Column(name = "allow_retake")
-    private Boolean allowRetake = false;
-
-    @Column(name = "started_at")
-    private LocalDateTime startedAt;
-
-    @Column(name = "ended_at")
-    private LocalDateTime endedAt;
 
     @Column(name = "is_submitted", nullable = false)
     private Boolean isSubmitted = false;
 
-    public enum PassTest {
-        PASS, FAIL
-    }
+    @Column(name = "is_passed", nullable = false)
+    private Boolean isPassed = false;
+
+    @Column(name = "start_time")
+    private LocalDateTime startTime;
+
+    @Column(name = "end_time")
+    private LocalDateTime endTime;
+
+    @Column(name = "submit_time")
+    private LocalDateTime submitTime;
+
+    @Column(name = "allow_retake", nullable = false)
+    private Boolean allowRetake = false;
 }

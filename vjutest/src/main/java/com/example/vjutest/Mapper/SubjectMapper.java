@@ -1,17 +1,14 @@
 package com.example.vjutest.Mapper;
 
 import com.example.vjutest.DTO.SubjectDTO;
+import com.example.vjutest.Model.Subject.VisibilityScope;
 import com.example.vjutest.Model.Subject;
 import com.example.vjutest.Model.User;
-import com.example.vjutest.Model.Major;
-import com.example.vjutest.Repository.MajorRepository;
 import com.example.vjutest.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
-import java.util.HashSet;
-import java.util.Set;
 
 @Component
 public class SubjectMapper {
@@ -19,8 +16,6 @@ public class SubjectMapper {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private MajorRepository majorRepository;
 
     public SubjectDTO toDTO(Subject subject) {
         if (subject == null) return null;
@@ -46,10 +41,14 @@ public class SubjectMapper {
         dto.setCreatedAt(subject.getCreatedAt());
         dto.setModifiedAt(subject.getModifiedAt());
 
-        // Set the first major's ID if available
+        // Map majors to list of ids
         if (subject.getMajors() != null && !subject.getMajors().isEmpty()) {
-            Major firstMajor = subject.getMajors().iterator().next();
-            dto.setMajorId(firstMajor.getId());
+            dto.setMajorIds(subject.getMajors().stream().map(m -> m.getId()).toList());
+        }
+
+        // Map departments to list of ids
+        if (subject.getDepartments() != null && !subject.getDepartments().isEmpty()) {
+            dto.setDepartmentIds(subject.getDepartments().stream().map(d -> d.getId()).toList());
         }
 
         return dto;
@@ -62,7 +61,6 @@ public class SubjectMapper {
         subject.setSubjectCode(dto.getSubjectCode());
         subject.setDescription(dto.getDescription());
         subject.setCreditHour(dto.getCreditHour());
-        subject.setVisibility(dto.getVisibility());
 
         if (dto.getCreatedById() != null) {
             Optional<User> createdBy = userRepository.findById(dto.getCreatedById());
@@ -74,16 +72,16 @@ public class SubjectMapper {
             modifiedBy.ifPresent(subject::setModifiedBy);
         }
 
-        // Handle major relationship
-        if (dto.getMajorId() != null) {
-            Optional<Major> major = majorRepository.findById(dto.getMajorId());
-            if (major.isPresent()) {
-                Set<Major> majors = new HashSet<>();
-                majors.add(major.get());
-                subject.setMajors(majors);
+        if (dto.getVisibility() != null) {
+            try {
+                subject.setVisibility(VisibilityScope.valueOf(dto.getVisibility().name())); 
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid status: " + dto.getVisibility());
             }
-        }
+        } else {
+            subject.setVisibility(VisibilityScope.PUBLIC);
 
+        }
         return subject;
     }
 }

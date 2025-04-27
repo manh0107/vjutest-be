@@ -1,9 +1,9 @@
 package com.example.vjutest.Service;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,8 +12,17 @@ import com.example.vjutest.Model.Role;
 import com.example.vjutest.Model.User;
 import com.example.vjutest.Repository.RoleRepository;
 import com.example.vjutest.Repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
+
 import com.example.vjutest.DTO.UserDTO;
+import com.example.vjutest.DTO.ClassEntityDTO;
+import com.example.vjutest.DTO.ExamDTO;
+import com.example.vjutest.DTO.QuestionDTO;
 import com.example.vjutest.Mapper.UserMapper;
+import com.example.vjutest.Mapper.ClassEntityMapper;
+import com.example.vjutest.Mapper.ExamMapper;
+import com.example.vjutest.Mapper.QuestionMapper;
 import com.example.vjutest.Exception.ResourceNotFoundException;
 import com.example.vjutest.Exception.UnauthorizedException;
 import com.example.vjutest.Exception.ValidationException;
@@ -21,9 +30,14 @@ import com.example.vjutest.Model.Department;
 import com.example.vjutest.Repository.DepartmentRepository;
 import com.example.vjutest.Model.Major;
 import com.example.vjutest.Repository.MajorRepository;
+import com.example.vjutest.Model.ClassEntity;
+import com.example.vjutest.Model.Exam;
+import com.example.vjutest.Model.Question;
+
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
@@ -32,16 +46,9 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final DepartmentRepository departmentRepository;
     private final MajorRepository majorRepository;
-
-    @Autowired
-    public UserService(UserRepository userRepository, RoleRepository roleRepository, UserMapper userMapper, PasswordEncoder passwordEncoder, DepartmentRepository departmentRepository, MajorRepository majorRepository) {
-        this.passwordEncoder = passwordEncoder;
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.userMapper = userMapper;
-        this.departmentRepository = departmentRepository;
-        this.majorRepository = majorRepository;
-    }
+    private final ClassEntityMapper classEntityMapper;
+    private final ExamMapper examMapper;
+    private final QuestionMapper questionMapper;
 
     private void checkAdminRole(User user) {
         if (!user.getRole().getName().equalsIgnoreCase("admin")) {
@@ -258,5 +265,49 @@ public class UserService {
                 throw new ValidationException("Số điện thoại đã được sử dụng");
             }
         }
+    }
+
+    public List<ClassEntityDTO> getUserCreatedClasses(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        List<ClassEntity> createdClasses = new ArrayList<>(user.getCreateClasses());
+        return createdClasses.stream()
+                .map(classEntityMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<ExamDTO> getUserCreatedExams(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        List<Exam> createdExams = new ArrayList<>(user.getCreatedExams());
+        return createdExams.stream()
+                .map(examMapper::toSimpleDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<QuestionDTO> getUserCreatedQuestions(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        List<Question> createdQuestions = new ArrayList<>(user.getCreatedQuestions());
+        return createdQuestions.stream()
+                .map(questionMapper::toSimpleDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<ClassEntityDTO> getTeacherClasses(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        if (!user.getRole().getName().equalsIgnoreCase("ROLE_TEACHER") && !user.getRole().getName().equalsIgnoreCase("ROLE_ADMIN")) {
+            throw new UnauthorizedException("Chỉ giáo viên mới có thể xem danh sách lớp dạy");
+        }
+
+        List<ClassEntity> teachingClasses = new ArrayList<>(user.getTeacherOfClasses());
+        return teachingClasses.stream()
+                .map(classEntityMapper::toDTO)
+                .collect(Collectors.toList());
     }
 }

@@ -25,10 +25,8 @@ public class ClassEntityDTO {
     private String teacherImage;
     private LocalDateTime createdAt;
     private VisibilityScope visibility;
-    private Long departmentId;
-    private String departmentName;
-    private Long majorId;
-    private String majorName;
+    private List<Long> departmentIds;
+    private List<Long> majorIds;
     private List<UserDTO> users;
     private List<UserDTO> teachers;
     private List<JoinRequestDTO> joinRequests;

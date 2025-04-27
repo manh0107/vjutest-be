@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.example.vjutest.DTO.ResultDTO;
-import com.example.vjutest.Model.Result.PassTest;
 import com.example.vjutest.Model.Result;
 
 @Component
@@ -36,12 +35,11 @@ public class ResultMapper {
         }
         
         dto.setScore(result.getScore());
-        dto.setSubmittedAt(result.getSubmittedAt());
-        dto.setDurationTime(result.getDurationTime());
-        dto.setPassTest(result.getPassTest() != null ? result.getPassTest().toString() : null);
-        dto.setStartedAt(result.getStartedAt());
-        dto.setEndedAt(result.getEndedAt());
+        dto.setSubmitTime(result.getSubmitTime());
+        dto.setStartTime(result.getStartTime());
+        dto.setEndTime(result.getEndTime());
         dto.setIsSubmitted(result.getIsSubmitted());
+        dto.setIsPassed(result.getIsPassed());
 
         return dto;
     }
@@ -62,12 +60,11 @@ public class ResultMapper {
         }
         
         dto.setScore(result.getScore());
-        dto.setSubmittedAt(result.getSubmittedAt());
-        dto.setDurationTime(result.getDurationTime());
-        dto.setPassTest(result.getPassTest() != null ? result.getPassTest().toString() : null);
-        dto.setStartedAt(result.getStartedAt());
-        dto.setEndedAt(result.getEndedAt());
+        dto.setSubmitTime(result.getSubmitTime());
+        dto.setStartTime(result.getStartTime());
+        dto.setEndTime(result.getEndTime());
         dto.setIsSubmitted(result.getIsSubmitted());
+        dto.setIsPassed(result.getIsPassed());
 
         return dto;
     }
@@ -79,16 +76,9 @@ public class ResultMapper {
     
         Result result = new Result();
         result.setId(dto.getId());
-
-        if (dto.getPassTest() != null) {
-            try {
-                result.setPassTest(PassTest.valueOf(dto.getPassTest())); 
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid status: " + dto.getPassTest());
-            }
-        } else {
-            result.setPassTest(PassTest.FAIL); 
-        }
+        result.setScore(dto.getScore());
+        result.setIsSubmitted(dto.getIsSubmitted());
+        result.setIsPassed(dto.getIsPassed());
     
         return result;
     }

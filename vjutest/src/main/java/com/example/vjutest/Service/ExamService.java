@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Collections;
-import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,6 +36,20 @@ public class ExamService {
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final UserAnswerMapper userAnswerMapper;
+    private final ExamTakingService examTakingService;
+
+    private Exam.ExamVisibility convertVisibilityScope(Subject.VisibilityScope scope) {
+        switch (scope) {
+            case PUBLIC:
+                return Exam.ExamVisibility.PUBLIC;
+            case DEPARTMENT:
+                return Exam.ExamVisibility.DEPARTMENT;
+            case MAJOR:
+                return Exam.ExamVisibility.MAJOR;
+            default:
+                return Exam.ExamVisibility.PUBLIC;
+        }
+    }
 
     //Tạo bài kiểm tra trong lớp học
     @Transactional
@@ -76,6 +89,7 @@ public class ExamService {
 
         exam.setPassScore(examRequest.getPassScore());
         exam.setIsPublic(examRequest.getIsPublic());
+        exam.setVisibility(convertVisibilityScope(subject.getVisibility()));
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -234,14 +248,14 @@ public class ExamService {
         }
 
         exam.setPassScore(examRequest.getPassScore());
+        exam.setIsPublic(true);
+        exam.setVisibility(convertVisibilityScope(subject.getVisibility()));
 
         LocalDateTime now = LocalDateTime.now();
 
         // Bài kiểm tra không thuộc lớp nào, chỉ gắn với môn học
         exam.setClassSubject(null);
         exam.setSubject(subject);
-
-        exam.setIsPublic(true);
 
         // Mặc định ở trạng thái DRAFT
         exam.setStatus(Exam.Status.DRAFT);
@@ -355,11 +369,11 @@ public class ExamService {
         Result result = new Result();
         result.setUser(student);
         result.setExam(exam);
-        result.setStartedAt(startTime);
-        result.setEndedAt(endTime);
+        result.setStartTime(startTime);
+        result.setEndTime(endTime);
         result.setIsSubmitted(false);
         result.setScore(0);
-        result.setPassTest(Result.PassTest.FAIL);
+        result.setIsPassed(false);
         result.setAllowRetake(false); // Mặc định không được làm lại nữa
 
         return resultMapper.toFullDTO(resultRepository.save(result));
@@ -438,44 +452,8 @@ public class ExamService {
             throw new RuntimeException("Bài kiểm tra chưa được công bố!");
         }
 
-        Result result = resultRepository.findByExamAndUser(exam, student)
-                .orElseThrow(() -> new RuntimeException("Sinh viên chưa bắt đầu bài kiểm tra"));
-
-        if (result.getIsSubmitted()) {
-            throw new IllegalStateException("Bài thi đã được nộp trước đó");
-        }
-
-        List<UserAnswer> userAnswers = userAnswerRepository.findByExamAndUser(exam, student);
-
-        int totalScore = 0;
-        Set<ExamQuestion> examQuestions = exam.getExamQuestions();
-
-        for (ExamQuestion eq : examQuestions) {
-            Question question = eq.getQuestion();
-            int point = eq.getPoint();
-
-            boolean isCorrect = userAnswers.stream().anyMatch(ua ->
-                    ua.getQuestion().getId().equals(question.getId()) &&
-                    ua.getAnswer().getIsCorrect());
-
-            if (isCorrect) {
-                totalScore += point;
-            }
-        }
-
-        // Cập nhật điểm và nộp bài
-        result.setScore(totalScore);
-        result.setIsSubmitted(true);
-        result.setSubmittedAt(LocalDateTime.now());
-        result.setPassTest(totalScore >= exam.getPassScore() ? Result.PassTest.PASS : Result.PassTest.FAIL);
-
-        // Cập nhật lại trạng thái của các đáp án
-        userAnswers.forEach(userAnswer -> {
-            userAnswer.setIsSubmitted(true);  // Đánh dấu là đã nộp
-            userAnswerRepository.save(userAnswer);
-        });
-
-        return resultMapper.toFullDTO(resultRepository.save(result));
+        Result result = examTakingService.submitExam(examId, student);
+        return resultMapper.toFullDTO(result);
     }
 
     //Lấy danh sách kết quả của sinh viên
