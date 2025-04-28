@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -18,9 +19,12 @@ import com.example.vjutest.Model.ClassEntity;
 import com.example.vjutest.Model.ClassEntity.VisibilityScope;
 import com.example.vjutest.Model.Subject;
 import com.example.vjutest.Service.ClassEntityService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @RestController
-@RequestMapping("/api/classes")
+@RequestMapping("/classes")
 public class ClassEntityController {
 
     private final ClassEntityService classEntityService;
@@ -34,19 +38,24 @@ public class ClassEntityController {
         this.subjectMapper = subjectMapper;
     }
 
-    @PostMapping
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    @PostMapping("/create")
     public ResponseEntity<ClassEntityDTO> createClass(
-            @RequestParam String name,
-            @RequestParam String classCode,
-            @RequestParam String description,
             @RequestParam Long userId,
-            @RequestParam List<Long> departmentIds,
-            @RequestParam List<Long> majorIds) {
-        ClassEntity createdClass = classEntityService.createClass(name, classCode, description, userId, departmentIds, majorIds);
+            @RequestBody CreateClassRequest request) {
+        ClassEntity createdClass = classEntityService.createClass(
+            request.getName(),
+            request.getClassCode(),
+            request.getDescription(),
+            userId,
+            request.getDepartmentIds(),
+            request.getMajorIds(),
+            request.getVisibility()
+        );
         return ResponseEntity.ok(classEntityMapper.toDTO(createdClass));
     }
 
-    @GetMapping
+    @GetMapping("/all")
     public ResponseEntity<List<ClassEntityDTO>> getAllClasses(@RequestParam Long userId) {
         List<ClassEntity> classes = classEntityService.getAllClasses(userId);
         return ResponseEntity.ok(classes.stream()
@@ -54,7 +63,7 @@ public class ClassEntityController {
                 .collect(java.util.stream.Collectors.toList()));
     }
 
-    @GetMapping("/department/{departmentId}")
+    @GetMapping("/department/find/{departmentId}")
     public ResponseEntity<List<ClassEntityDTO>> getClassesByDepartment(
             @PathVariable Long departmentId,
             @RequestParam Long userId) {
@@ -64,7 +73,7 @@ public class ClassEntityController {
                 .collect(java.util.stream.Collectors.toList()));
     }
 
-    @GetMapping("/major/{majorId}")
+    @GetMapping("/major/find/{majorId}")
     public ResponseEntity<List<ClassEntityDTO>> getClassesByMajor(
             @PathVariable Long majorId,
             @RequestParam Long userId) {
@@ -74,29 +83,32 @@ public class ClassEntityController {
                 .collect(java.util.stream.Collectors.toList()));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/find/{id}")
     public ResponseEntity<ClassEntityDTO> getClassById(@PathVariable Long id, @RequestParam Long userId) {
         Optional<ClassEntity> classOpt = classEntityService.getClassById(id, userId);
         return classOpt.map(classEntity -> ResponseEntity.ok(classEntityMapper.toDTO(classEntity)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/update/{id}")
     public ResponseEntity<ClassEntityDTO> updateClass(
             @PathVariable Long id,
-            @RequestBody ClassEntityDTO classDTO,
-            @RequestParam Long userId) {
+            @RequestParam Long userId,
+            @RequestBody UpdateClassRequest request) {
         ClassEntity updatedClass = classEntityService.updateClass(
             id,
-            classEntityMapper.toEntity(classDTO),
+            request.getName(),
+            request.getDescription(),
+            request.getClassCode(),
             userId,
-            classDTO.getDepartmentIds(),
-            classDTO.getMajorIds()
+            request.getDepartmentIds(),
+            request.getMajorIds(),
+            request.getVisibility()
         );
         return ResponseEntity.ok(classEntityMapper.toDTO(updatedClass));
     }
 
-    @PutMapping("/{id}/visibility")
+    @PutMapping("/update/{id}/visibility")
     public ResponseEntity<ClassEntityDTO> changeVisibility(
             @PathVariable Long id,
             @RequestParam VisibilityScope visibility,
@@ -105,13 +117,13 @@ public class ClassEntityController {
         return ResponseEntity.ok(classEntityMapper.toDTO(updatedClass));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deleteClass(@PathVariable Long id, @RequestParam Long userId) {
         classEntityService.deleteClass(id, userId);
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{classId}/students/{studentId}")
+    @PostMapping("/add-student/{classId}/students/{studentId}")
     public ResponseEntity<Void> addStudentToClass(
             @PathVariable Long classId,
             @PathVariable Long studentId,
@@ -120,7 +132,7 @@ public class ClassEntityController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{classId}/students/{studentId}")
+    @DeleteMapping("/remove-student/{classId}/students/{studentId}")
     public ResponseEntity<Void> removeStudentFromClass(
             @PathVariable Long classId,
             @PathVariable Long studentId,
@@ -137,7 +149,7 @@ public class ClassEntityController {
         return ResponseEntity.ok(message);
     }
 
-    @PostMapping("/{classId}/teachers/{inviteeId}")
+    @PostMapping("/invite/{classId}/teachers/{inviteeId}")
     public ResponseEntity<Void> inviteTeacher(
             @PathVariable Long classId,
             @PathVariable Long inviteeId,
@@ -166,7 +178,7 @@ public class ClassEntityController {
         return ResponseEntity.ok(teachers);
     }
 
-    @PostMapping("/{classId}/subjects/{subjectId}")
+    @PostMapping("/add/{classId}/subjects/{subjectId}")
     public ResponseEntity<Void> addSubjectToClass(
             @PathVariable Long classId,
             @PathVariable Long subjectId,
@@ -175,7 +187,7 @@ public class ClassEntityController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{classId}/subjects/{subjectId}")
+    @DeleteMapping("/remove/{classId}/subjects/{subjectId}")
     public ResponseEntity<Void> removeSubjectFromClass(
             @PathVariable Long classId,
             @PathVariable Long subjectId,
@@ -191,5 +203,29 @@ public class ClassEntityController {
                 .map(subjectMapper::toDTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(subjectDTOs);
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreateClassRequest {
+        private String name;
+        private String classCode;
+        private String description;
+        private ClassEntity.VisibilityScope visibility;
+        private List<Long> departmentIds;
+        private List<Long> majorIds;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateClassRequest {
+        private String name;
+        private String classCode;
+        private String description;
+        private ClassEntity.VisibilityScope visibility;
+        private List<Long> departmentIds;
+        private List<Long> majorIds;
     }
 }

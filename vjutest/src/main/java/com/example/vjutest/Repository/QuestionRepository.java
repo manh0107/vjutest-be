@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.example.vjutest.Model.Chapter;
 import com.example.vjutest.Model.Question;
 import com.example.vjutest.Model.Subject;
 
@@ -34,4 +35,5 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findByChapter_Subject(Subject subject);
     List<Question> findByCreatedBy_Id(Long userId);
     List<Question> findByIsPublicTrue();
+    int countByChapter(Chapter chapter);
 }

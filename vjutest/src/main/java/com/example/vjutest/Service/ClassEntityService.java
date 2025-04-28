@@ -79,7 +79,7 @@ public class ClassEntityService {
 
     // Tạo lớp học
     @Transactional
-    public ClassEntity createClass(String name, String classCode, String description, Long userId, List<Long> departmentIds, List<Long> majorIds) {
+    public ClassEntity createClass(String name, String classCode, String description, Long userId, List<Long> departmentIds, List<Long> majorIds, ClassEntity.VisibilityScope visibility) {
         User createdBy = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng: " + userId));
 
@@ -98,7 +98,15 @@ public class ClassEntityService {
         newClassEntity.setDescription(description);
         newClassEntity.setCreatedBy(createdBy);
         newClassEntity.getTeachers().add(createdBy);
-        newClassEntity.setVisibility(ClassEntity.VisibilityScope.MAJOR); // Mặc định là theo ngành
+        newClassEntity.setVisibility(visibility);
+
+        if (visibility == ClassEntity.VisibilityScope.DEPARTMENT && (departmentIds == null || departmentIds.isEmpty())) {
+            throw new RuntimeException("Phải chọn ít nhất một khoa khi phạm vi truy cập là theo khoa");
+        }
+
+        if (visibility == ClassEntity.VisibilityScope.MAJOR && (majorIds == null || majorIds.isEmpty())) {
+            throw new RuntimeException("Phải chọn ít nhất một ngành khi phạm vi truy cập là theo ngành");
+        }
 
         if (departmentIds != null && !departmentIds.isEmpty()) {
             Set<Department> departments = new java.util.HashSet<>(departmentRepository.findAllById(departmentIds));
@@ -165,7 +173,15 @@ public class ClassEntityService {
 
     // Cập nhật thông tin lớp học
     @Transactional
-    public ClassEntity updateClass(Long id, ClassEntity classEntity, Long userId, List<Long> departmentIds, List<Long> majorIds) {
+    public ClassEntity updateClass(
+            Long id,
+            String name,
+            String description,
+            String classCode,
+            Long userId,
+            List<Long> departmentIds,
+            List<Long> majorIds,
+            ClassEntity.VisibilityScope visibility) {
         ClassEntity existingClass = classEntityRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
 
@@ -173,19 +189,33 @@ public class ClassEntityService {
             throw new UnauthorizedAccessException("Bạn không có quyền cập nhật lớp học này");
         }
 
-        existingClass.setName(classEntity.getName());
-        existingClass.setDescription(classEntity.getDescription());
-        existingClass.setVisibility(classEntity.getVisibility());
+        // Validate visibility and selections
+        if (visibility == ClassEntity.VisibilityScope.DEPARTMENT && (departmentIds == null || departmentIds.isEmpty())) {
+            throw new RuntimeException("Phải chọn ít nhất một khoa khi phạm vi truy cập là theo khoa");
+        }
 
-        if (!existingClass.getClassCode().equals(classEntity.getClassCode())) {
-            boolean isDuplicate = classEntityRepository.existsByClassCode(classEntity.getClassCode());
+        if (visibility == ClassEntity.VisibilityScope.MAJOR) {
+            if (departmentIds == null || departmentIds.isEmpty()) {
+                throw new RuntimeException("Phải chọn ít nhất một khoa khi phạm vi truy cập là theo ngành");
+            }
+            if (majorIds == null || majorIds.isEmpty()) {
+                throw new RuntimeException("Phải chọn ít nhất một ngành khi phạm vi truy cập là theo ngành");
+            }
+        }
+
+        existingClass.setName(name);
+        existingClass.setDescription(description);
+        existingClass.setVisibility(visibility);
+
+        if (!existingClass.getClassCode().equals(classCode)) {
+            boolean isDuplicate = classEntityRepository.existsByClassCode(classCode);
             if (isDuplicate) {
                 throw new RuntimeException("Mã lớp đã tồn tại, vui lòng chọn mã khác");
             }
-            existingClass.setClassCode(classEntity.getClassCode());
+            existingClass.setClassCode(classCode);
         }
 
-        // Cập nhật departments và majors
+        // Update departments and majors
         if (departmentIds != null) {
             Set<Department> departments = new java.util.HashSet<>(departmentRepository.findAllById(departmentIds));
             existingClass.setDepartments(departments);
