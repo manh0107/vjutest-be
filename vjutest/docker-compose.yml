@@ -27,6 +27,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/vjutestdb?serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
+      # Cloudinary environment variables
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
     networks:
       - vjutest-mysql
 

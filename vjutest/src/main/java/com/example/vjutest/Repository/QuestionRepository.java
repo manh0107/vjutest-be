@@ -36,4 +36,5 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findByCreatedBy_Id(Long userId);
     List<Question> findByIsPublicTrue();
     int countByChapter(Chapter chapter);
+    List<Question> findByChapterId(Long chapterId);
 }

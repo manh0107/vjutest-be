@@ -40,4 +40,6 @@ public class QuestionDTO {
     private ChapterDTO chapter;
 
     private List<ExamQuestionDTO> examQuestions;
+
+    private String imageUrl;
 }

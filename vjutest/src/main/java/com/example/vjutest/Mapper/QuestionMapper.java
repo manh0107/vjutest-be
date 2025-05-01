@@ -29,6 +29,7 @@ public class QuestionMapper {
         dto.setIsCompleted(question.getIsCompleted());
         dto.setCreatedAt(question.getCreatedAt());
         dto.setModifiedAt(question.getModifiedAt());
+        dto.setImageUrl(question.getImageUrl());
 
         if (question.getCreatedBy() != null) {
             dto.setCreatedById(question.getCreatedBy().getId());
@@ -56,6 +57,7 @@ public class QuestionMapper {
         dto.setIsCompleted(question.getIsCompleted());
         dto.setCreatedAt(question.getCreatedAt());
         dto.setModifiedAt(question.getModifiedAt());
+        dto.setImageUrl(question.getImageUrl());
 
         if (question.getCreatedBy() != null) {
             dto.setCreatedById(question.getCreatedBy().getId());

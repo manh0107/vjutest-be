@@ -28,6 +28,7 @@ public class AnswerMapper {
         dto.setIsCorrect(answer.getIsCorrect());
         dto.setCreatedAt(answer.getCreatedAt());
         dto.setModifiedAt(answer.getModifiedAt());
+        dto.setImageUrl(answer.getImageUrl());
         
         if (answer.getQuestion() != null) {
             dto.setQuestionId(answer.getQuestion().getId());
@@ -53,6 +54,7 @@ public class AnswerMapper {
         dto.setIsCorrect(answer.getIsCorrect());
         dto.setCreatedAt(answer.getCreatedAt());
         dto.setModifiedAt(answer.getModifiedAt());
+        dto.setImageUrl(answer.getImageUrl());
 
         if (answer.getCreatedBy() != null) {
             dto.setUser(userMapper.toDTO(answer.getCreatedBy()));

@@ -1,5 +1,6 @@
 package com.example.vjutest.Service;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -7,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.vjutest.DTO.ExamQuestionDTO;
 import com.example.vjutest.DTO.QuestionDTO;
@@ -40,9 +42,10 @@ public class QuestionService {
     private final ExamQuestionService examQuestionService;
     private final AnswerRepository answerRepository;
     private final ChapterRepository chapterRepository;
+    private final CloudinaryService cloudinaryService;
 
     // Tạo câu hỏi bên ngoài bài kiểm tra (ngân hàng câu hỏi)
-    public QuestionDTO createQuestion(Question questionRequest, Long userId, Long chapterId) {
+    public QuestionDTO createQuestion(Question questionRequest, Long userId, Long chapterId, MultipartFile imageFile) throws IOException {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
@@ -73,14 +76,20 @@ public class QuestionService {
         question.setModifiedAt(LocalDateTime.now());
         question.setModifiedBy(user);
         question.setCreatedBy(user);
-        question.setChapter(chapter);       
+        question.setChapter(chapter);
+
+        // Handle image upload
+        if (imageFile != null && !imageFile.isEmpty()) {
+            String imageUrl = cloudinaryService.uploadImage(imageFile, "questions");
+            question.setImageUrl(imageUrl);
+        }
 
         return questionMapper.toFullDTO(questionRepository.save(question));
     }
 
     // Tạo câu hỏi bên trong bài kiểm tra (có thể public hoặc private)
     @Transactional
-    public QuestionDTO createQuestionInExam(Question questionRequest, Long examId, Long userId, Long chapterId) {
+    public QuestionDTO createQuestionInExam(Question questionRequest, Long examId, Long userId, Long chapterId, MultipartFile imageFile) throws IOException {
         Exam exam = examRepository.findById(examId)
                 .orElseThrow(() -> new RuntimeException("Bài kiểm tra không tồn tại!"));
         User user = userRepository.findById(userId)
@@ -120,6 +129,12 @@ public class QuestionService {
         }
 
         question.setChapter(chapter);
+
+        // Handle image upload
+        if (imageFile != null && !imageFile.isEmpty()) {
+            String imageUrl = cloudinaryService.uploadImage(imageFile, "questions");
+            question.setImageUrl(imageUrl);
+        }
         
         Question savedQuestion = questionRepository.save(question);
         List<ExamQuestion> createdExamQuestions = new ArrayList<>();
@@ -143,21 +158,6 @@ public class QuestionService {
         examRepository.save(exam);
         
         return questionMapper.toFullDTO(savedQuestion);
-    }
-
-    // Lấy danh sách câu hỏi từ ngân hàng câu hỏi
-    public List<Question> getQuestionsFromBank(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-
-        if ("admin".equals(user.getRole().getName())) {
-            return questionRepository.findAllByIsPublic(true);
-        }
-
-        // Lấy các câu hỏi public thuộc cùng department và major với user
-        return questionRepository.findAllByIsPublicTrueAndChapterSubjectMajorsDepartmentId(
-            user.getDepartment().getId()
-        );
     }
 
     // Lấy danh sách câu hỏi công khai theo môn học
@@ -228,7 +228,7 @@ public class QuestionService {
     }
 
     @Transactional
-    public QuestionDTO updateBankQuestion(Long id, QuestionDTO questionRequest, Long userId) {
+    public QuestionDTO updateBankQuestion(Long id, QuestionDTO questionRequest, Long userId, MultipartFile imageFile) throws IOException {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy câu hỏi"));
 
@@ -249,6 +249,17 @@ public class QuestionService {
             }
         }
 
+        // Handle image upload
+        if (imageFile != null && !imageFile.isEmpty()) {
+            // Delete old image if exists
+            if (question.getImageUrl() != null) {
+                cloudinaryService.deleteImage(question.getImageUrl());
+            }
+            // Upload new image
+            String imageUrl = cloudinaryService.uploadImage(imageFile, "questions");
+            question.setImageUrl(imageUrl);
+        }
+
         question.setName(questionRequest.getName());
         question.setDifficulty(questionRequest.getDifficulty());
         question.setModifiedAt(LocalDateTime.now());
@@ -259,7 +270,7 @@ public class QuestionService {
     }
 
     @Transactional
-    public QuestionDTO updateQuestionInExam(Long id, QuestionDTO questionRequest, Long userId, Long examId) {
+    public QuestionDTO updateQuestionInExam(Long id, QuestionDTO questionRequest, Long userId, Long examId, MultipartFile imageFile) throws IOException {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy câu hỏi"));
 
@@ -281,6 +292,17 @@ public class QuestionService {
             if (!hasAccess && !"admin".equals(user.getRole().getName())) {
                 throw new UnauthorizedAccessException("Bạn không có quyền cập nhật câu hỏi của môn học này!");
             }
+        }
+
+        // Handle image upload
+        if (imageFile != null && !imageFile.isEmpty()) {
+            // Delete old image if exists
+            if (question.getImageUrl() != null) {
+                cloudinaryService.deleteImage(question.getImageUrl());
+            }
+            // Upload new image
+            String imageUrl = cloudinaryService.uploadImage(imageFile, "questions");
+            question.setImageUrl(imageUrl);
         }
 
         question.setName(questionRequest.getName());
@@ -318,7 +340,7 @@ public class QuestionService {
     }
 
     @Transactional
-    public void deleteQuestion(Long id, Long userId) {
+    public void deleteQuestion(Long id, Long userId) throws IOException {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy câu hỏi"));
 
@@ -337,6 +359,11 @@ public class QuestionService {
             if (!hasAccess && !"admin".equals(user.getRole().getName())) {
                 throw new UnauthorizedAccessException("Bạn không có quyền xóa câu hỏi của môn học này!");
             }
+        }
+
+        // Delete image from Cloudinary if exists
+        if (question.getImageUrl() != null) {
+            cloudinaryService.deleteImage(question.getImageUrl());
         }
 
         questionRepository.delete(question);
@@ -358,6 +385,10 @@ public class QuestionService {
         return questions.stream()
                 .map(questionMapper::toFullDTO)
                 .collect(Collectors.toList());
+    }
+
+    public List<Question> getQuestionsByChapter(Long chapterId) {
+        return questionRepository.findByChapterId(chapterId);
     }
 }
 

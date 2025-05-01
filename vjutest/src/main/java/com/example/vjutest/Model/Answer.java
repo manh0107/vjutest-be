@@ -52,4 +52,7 @@ public class Answer {
 
     @OneToMany(mappedBy = "answer", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<UserAnswer> userAnswers;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 }

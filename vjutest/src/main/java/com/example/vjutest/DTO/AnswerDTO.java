@@ -32,4 +32,5 @@ public class AnswerDTO {
     private QuestionDTO question;
     private UserDTO user;
 
+    private String imageUrl;
 }
