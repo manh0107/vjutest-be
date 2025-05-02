@@ -390,5 +390,9 @@ public class QuestionService {
     public List<Question> getQuestionsByChapter(Long chapterId) {
         return questionRepository.findByChapterId(chapterId);
     }
+
+    public List<Question> getCompletedQuestionsByChapter(Long chapterId) {
+        return questionRepository.findByChapterIdAndIsCompletedTrue(chapterId);
+    }
 }
 

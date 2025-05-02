@@ -69,6 +69,16 @@ public class ExamMapper {
             subjectDTO.setName(exam.getSubject().getName());
             dto.setSubject(subjectDTO);
         }
+
+        // Map majors to list of ids
+        if (exam.getMajors() != null && !exam.getMajors().isEmpty()) {
+            dto.setMajorIds(exam.getMajors().stream().map(m -> m.getId()).toList());
+        }
+
+        // Map departments to list of ids
+        if (exam.getDepartments() != null && !exam.getDepartments().isEmpty()) {
+            dto.setDepartmentIds(exam.getDepartments().stream().map(d -> d.getId()).toList());
+        }
         
         return dto;
     }
@@ -107,6 +117,16 @@ public class ExamMapper {
 
         if (exam.getSubject() != null) {
             dto.setSubject(subjectMapper.toDTO(exam.getSubject()));
+        }
+
+        // Map departments to list of ids
+        if (exam.getDepartments() != null && !exam.getDepartments().isEmpty()) {
+            dto.setDepartmentIds(exam.getDepartments().stream().map(d -> d.getId()).toList());
+        }
+
+        // Map majors to list of ids
+        if (exam.getMajors() != null && !exam.getMajors().isEmpty()) {
+            dto.setMajorIds(exam.getMajors().stream().map(m -> m.getId()).toList());
         }
 
         return dto;

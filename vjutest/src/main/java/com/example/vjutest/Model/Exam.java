@@ -99,6 +99,22 @@ public class Exam {
     @Column(name = "questions_count")
     private Integer questionsCount;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "exam_majors",
+        joinColumns = @JoinColumn(name = "exam_id", referencedColumnName = "id"),
+        inverseJoinColumns = @JoinColumn(name = "major_id", referencedColumnName = "id")
+    )
+    private Set<Major> majors = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "exam_departments",
+        joinColumns = @JoinColumn(name = "exam_id", referencedColumnName = "id"),
+        inverseJoinColumns = @JoinColumn(name = "department_id", referencedColumnName = "id")
+    )
+    private Set<Department> departments = new HashSet<>();
+
     public enum Status {
         DRAFT, PUBLISHED, CLOSED
     }
@@ -107,10 +123,8 @@ public class Exam {
         PUBLIC,        // Tất cả sinh viên đều thấy
         DEPARTMENT,    // Chỉ sinh viên trong khoa thấy
         MAJOR,         // Chỉ sinh viên trong ngành thấy
-        CLASS          // Chỉ sinh viên trong lớp cụ thể thấy
     }
     
-
     public int getTotalQuestions() {
         if (examQuestions == null) return 0;
         return (int) examQuestions.stream()
@@ -159,7 +173,7 @@ public class Exam {
             return this.classSubject.getClassEntity().getMajors().stream()
                 .anyMatch(major -> major.equals(student.getMajor()));
         }
-        if (this.visibility == ExamVisibility.CLASS) {
+        if (this.isPublic == false) {
             return this.classSubject.getClassEntity().getUsers().contains(student);
         }
         return false;

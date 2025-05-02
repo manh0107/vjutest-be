@@ -15,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Collections;
+import java.util.HashSet;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,6 +39,8 @@ public class ExamService {
     private final AnswerRepository answerRepository;
     private final UserAnswerMapper userAnswerMapper;
     private final ExamTakingService examTakingService;
+    private final DepartmentRepository departmentRepository;
+    private final MajorRepository majorRepository;
 
     private Exam.ExamVisibility convertVisibilityScope(Subject.VisibilityScope scope) {
         switch (scope) {
@@ -224,7 +228,7 @@ public class ExamService {
 
     // Tạo bài kiểm tra bên ngoài lớp học
     @Transactional
-    public ExamDTO createExamWithoutClass(Long subjectId, Long userId, Exam examRequest) {
+    public ExamDTO createExamWithoutClass(Long subjectId, Long userId, Exam examRequest, List<Long> departmentIds, List<Long> majorIds) {
         // Kiểm tra môn học có tồn tại không
         Subject subject = subjectRepository.findById(subjectId)
                 .orElseThrow(() -> new RuntimeException("Môn học không tồn tại!"));
@@ -249,7 +253,25 @@ public class ExamService {
 
         exam.setPassScore(examRequest.getPassScore());
         exam.setIsPublic(true);
-        exam.setVisibility(convertVisibilityScope(subject.getVisibility()));
+        exam.setVisibility(examRequest.getVisibility());
+
+        // Kiểm tra và xử lý phạm vi hiển thị
+        if (exam.getVisibility() == Exam.ExamVisibility.DEPARTMENT && (departmentIds == null || departmentIds.isEmpty())) {
+            throw new RuntimeException("Phải chọn ít nhất một khoa khi phạm vi truy cập là theo khoa");
+        }
+        if (exam.getVisibility() == Exam.ExamVisibility.MAJOR && (majorIds == null || majorIds.isEmpty())) {
+            throw new RuntimeException("Phải chọn ít nhất một ngành khi phạm vi truy cập là theo ngành");
+        }
+
+        // Set departments và majors nếu có
+        if (departmentIds != null && !departmentIds.isEmpty()) {
+            Set<Department> departments = new HashSet<>(departmentRepository.findAllById(departmentIds));
+            exam.setDepartments(departments);
+        }
+        if (majorIds != null && !majorIds.isEmpty()) {
+            Set<Major> majors = new HashSet<>(majorRepository.findAllById(majorIds));
+            exam.setMajors(majors);
+        }
 
         LocalDateTime now = LocalDateTime.now();
 

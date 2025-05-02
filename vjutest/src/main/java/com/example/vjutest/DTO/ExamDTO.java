@@ -1,6 +1,7 @@
 package com.example.vjutest.DTO;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.example.vjutest.Model.Exam.ExamVisibility;
 import com.example.vjutest.Model.Exam.Status;
@@ -45,4 +46,7 @@ public class ExamDTO {
     private ClassSubjectDTO classSubject;
     private SubjectDTO subject;
     private UserDTO user;
+
+    private List<Long> departmentIds;
+    private List<Long> majorIds;
 }

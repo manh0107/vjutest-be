@@ -129,6 +129,16 @@ public class QuestionController {
         return ResponseEntity.ok(questionDTOs);
     }
 
+    @GetMapping("/completed/by-chapter/{chapterId}")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    public ResponseEntity<List<QuestionDTO>> getCompletedQuestionsByChapter(@PathVariable Long chapterId) {
+        List<Question> questions = questionService.getCompletedQuestionsByChapter(chapterId);
+        List<QuestionDTO> questionDTOs = questions.stream()
+                .map(questionMapper::toFullDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(questionDTOs);
+    }
+
     @PostMapping("/upload")
     public ResponseEntity<?> uploadImage(@RequestParam("file") MultipartFile file, @RequestParam("folder") String folder) {
         try {

@@ -91,10 +91,12 @@ public class ExamController {
     public ResponseEntity<ExamDTO> createExamWithoutClass(
             @RequestParam Long subjectId,
             @RequestBody Exam examRequest,
+            @RequestParam(required = false) List<Long> departmentIds,
+            @RequestParam(required = false) List<Long> majorIds,
             Authentication authentication) {
 
         Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
-        ExamDTO createdExam = examService.createExamWithoutClass(subjectId, userId, examRequest);
+        ExamDTO createdExam = examService.createExamWithoutClass(subjectId, userId, examRequest, departmentIds, majorIds);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdExam);
     }
 
