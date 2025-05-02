@@ -34,7 +34,7 @@ public class UserMapper {
         dto.setPhoneNumber(user.getPhoneNumber());
         dto.setGender(user.getGender());
         dto.setEmail(user.getEmail());
-        dto.setImage(user.getImage());
+        dto.setImageUrl(user.getImageUrl());
         dto.setRole(user.getRole().getName());
         dto.setDepartment(departmentMapper.toDTO(user.getDepartment()));
         dto.setMajor(majorMapper.toDTO(user.getMajor()));
@@ -91,7 +91,7 @@ public class UserMapper {
         user.setPhoneNumber(dto.getPhoneNumber());
         user.setGender(dto.getGender());
         user.setEmail(dto.getEmail());
-        user.setImage(dto.getImage());
+        user.setImageUrl(dto.getImageUrl());
         user.setIsEnabled(dto.getIsEnabled());
         
         // Department and Major will be set in the service layer

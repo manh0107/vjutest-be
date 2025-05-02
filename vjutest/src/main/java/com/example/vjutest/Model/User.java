@@ -67,8 +67,8 @@ public class User{
     @Column(name = "password", nullable = false)
     private String password;
 
-    @Column(name = "image", nullable = false, columnDefinition = "TEXT")
-    private String image = "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg";
+    @Column(name = "image_url", length = 2000)
+    private String imageUrl;
 
     @Column(nullable = false)
     private Boolean isEnabled;
@@ -80,9 +80,16 @@ public class User{
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "modified_at")
+    private LocalDateTime modifiedAt;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", referencedColumnName = "id")
     private Role role;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "modified_by", referencedColumnName = "id")
+    private User modifiedBy;
 
     @OneToMany(mappedBy = "createdBy", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     private Set<ClassEntity> createClasses = new HashSet<>();
@@ -125,7 +132,7 @@ public class User{
         this.email = email;
         this.password = password;
         this.role = role;
-        this.image = (image != null && !image.isEmpty()) ? image : "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg";
+        this.imageUrl = (image != null && !image.isEmpty()) ? image : "https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg";
         this.isEnabled = false; 
     }
 }

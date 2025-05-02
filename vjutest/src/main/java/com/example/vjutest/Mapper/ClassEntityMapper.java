@@ -38,7 +38,7 @@ public class ClassEntityMapper {
         if (entity.getCreatedBy() != null) {
             dto.setCreatedById(entity.getCreatedBy().getId());
             dto.setCreatedByName(entity.getCreatedBy().getName());
-            dto.setCreateByImage(entity.getCreatedBy().getImage());
+            dto.setCreateByImage(entity.getCreatedBy().getImageUrl());
         }
 
         // Map majors to list of ids
@@ -52,11 +52,11 @@ public class ClassEntityMapper {
         }
 
         if (entity.getUsers() != null) {
-            dto.setUserImage(entity.getUsers().stream().findFirst().map(User::getImage).orElse(null));
+            dto.setUserImage(entity.getUsers().stream().findFirst().map(User::getImageUrl).orElse(null));
         }
 
         if (entity.getTeachers() != null) {
-            dto.setTeacherImage(entity.getTeachers().stream().findFirst().map(User::getImage).orElse(null));
+            dto.setTeacherImage(entity.getTeachers().stream().findFirst().map(User::getImageUrl).orElse(null));
         }
 
         List<JoinRequestDTO> joinRequestDTOs = (entity.getJoinRequests() != null) ? 
@@ -117,13 +117,13 @@ public class ClassEntityMapper {
         if (entity.getCreatedBy() != null) {
             dto.setCreatedById(entity.getCreatedBy().getId());
             dto.setCreatedByName(entity.getCreatedBy().getName());
-            dto.setCreateByImage(entity.getCreatedBy().getImage());
+            dto.setCreateByImage(entity.getCreatedBy().getImageUrl());
         }
         if (entity.getUsers() != null) {
-            dto.setUserImage(entity.getUsers().stream().findFirst().map(User::getImage).orElse(null));
+            dto.setUserImage(entity.getUsers().stream().findFirst().map(User::getImageUrl).orElse(null));
         }
         if (entity.getTeachers() != null) {
-            dto.setTeacherImage(entity.getTeachers().stream().findFirst().map(User::getImage).orElse(null));
+            dto.setTeacherImage(entity.getTeachers().stream().findFirst().map(User::getImageUrl).orElse(null));
         }
 
         //Lấy đầy đủ thông tin JoinRequest + User gửi request

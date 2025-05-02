@@ -1,12 +1,16 @@
 package com.example.vjutest.Controller;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.DTO.ClassEntityDTO;
@@ -16,6 +20,8 @@ import com.example.vjutest.Model.User;
 import com.example.vjutest.Service.UserService;
 import com.example.vjutest.User.CustomUserDetails;
 import com.example.vjutest.Mapper.UserMapper;
+import com.example.vjutest.Service.CloudinaryService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/users")
@@ -24,11 +30,13 @@ public class UserController {
 
     private final UserService userService;
     private final UserMapper userMapper;
+    private final CloudinaryService cloudinaryService;
 
     @Autowired
-    public UserController(UserService userService, UserMapper userMapper) {
+    public UserController(UserService userService, UserMapper userMapper, CloudinaryService cloudinaryService) {
         this.userService = userService;
         this.userMapper = userMapper;
+        this.cloudinaryService = cloudinaryService;
     }
 
     // Chỉ admin có quyền tạo người dùng
@@ -37,7 +45,7 @@ public class UserController {
     public ResponseEntity<?> createUser(@RequestBody User user, Authentication authentication) {
         try {
             Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  // Lấy userId từ Authentication
-            user.setImage("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg"); 
+            user.setImageUrl("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg"); 
             UserDTO createdUser = userService.createUser(user, userId);
             return ResponseEntity.ok(createdUser);
         } catch (Exception e) {
@@ -48,12 +56,29 @@ public class UserController {
     // Cập nhật thông tin người dùng
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PutMapping("/update/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User user, Authentication authentication) {
+    public ResponseEntity<?> updateUser(@PathVariable Long id, 
+                                      @RequestPart(value = "user", required = false) String userJson,
+                                      @RequestPart(value = "file", required = false) MultipartFile file,
+                                      Authentication authentication) {
         try {
-            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();  // Lấy userId từ Authentication
-            UserDTO updatedUser = userService.updateUser(id, user, userId);
+            Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+            User user = null;
+            if (userJson != null) {
+                try {
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    user = objectMapper.readValue(userJson, User.class);
+                    // Log để debug
+                    System.out.println("Parsed user data: " + user);
+                } catch (Exception e) {
+                    System.err.println("Error parsing user JSON: " + e.getMessage());
+                    e.printStackTrace();
+                    return ResponseEntity.badRequest().body("Lỗi khi parse dữ liệu người dùng: " + e.getMessage());
+                }
+            }
+            UserDTO updatedUser = userService.updateUser(id, user, userId, file);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
+            e.printStackTrace(); // Log lỗi
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -162,6 +187,18 @@ public class UserController {
             return ResponseEntity.ok(classes);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/upload")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER') or hasRole('ROLE_STUDENT')")
+    public ResponseEntity<?> uploadImage(@RequestParam("file") MultipartFile file) {
+        try {
+            String imageUrl = cloudinaryService.uploadImage(file, "users");
+            return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to upload image"));
         }
     }
 }

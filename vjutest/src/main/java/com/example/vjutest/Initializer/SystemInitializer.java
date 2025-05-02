@@ -99,7 +99,7 @@ public class SystemInitializer {
             admin.setPhoneNumber(Long.parseLong("9999999999"));
             admin.setCode(Long.parseLong("99999999"));
             admin.setGender("Other");
-            admin.setImage("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg");
+            admin.setImageUrl("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg");
             admin.setRole(adminRole);
             admin.setDepartment(defaultDepartment);
             admin.setMajor(defaultMajor);

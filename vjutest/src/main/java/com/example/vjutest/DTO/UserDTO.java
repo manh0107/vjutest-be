@@ -19,7 +19,7 @@ public class UserDTO {
     private Long phoneNumber;
     private String gender;
     private String email;
-    private String image;
+    private String imageUrl;
     private String role;
 
     private DepartmentDTO department;

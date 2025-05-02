@@ -3,10 +3,13 @@ package com.example.vjutest.Service;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
+import java.io.IOException;
+import java.time.LocalDateTime;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.vjutest.Model.Role;
 import com.example.vjutest.Model.User;
@@ -34,7 +37,6 @@ import com.example.vjutest.Model.ClassEntity;
 import com.example.vjutest.Model.Exam;
 import com.example.vjutest.Model.Question;
 
-
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -49,6 +51,7 @@ public class UserService {
     private final ClassEntityMapper classEntityMapper;
     private final ExamMapper examMapper;
     private final QuestionMapper questionMapper;
+    private final CloudinaryService cloudinaryService;
 
     private void checkAdminRole(User user) {
         if (!user.getRole().getName().equalsIgnoreCase("admin")) {
@@ -113,7 +116,8 @@ public class UserService {
         return userMapper.toDTO(savedUser);
     }
     
-    public UserDTO updateUser(Long id, User updatedUser, Long userId) {
+    @Transactional(rollbackFor = Exception.class)
+    public UserDTO updateUser(Long id, User updatedUser, Long userId, MultipartFile imageFile) throws IOException {
         User currentUser = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
         checkAdminRole(currentUser);
@@ -121,50 +125,83 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
     
-        if (updatedUser.getCode() != null && !updatedUser.getCode().equals(user.getCode())) {
-            if (userRepository.existsByCodeAndIdNot(updatedUser.getCode(), userId)) {
-                throw new ValidationException("Mã sinh viên đã được sử dụng");
-            }
-            user.setCode(updatedUser.getCode());
-        }
+        // Log để debug
+        System.out.println("Current user data: " + user);
+        System.out.println("Updated user data: " + updatedUser);
     
-        if (updatedUser.getPhoneNumber() != null && !updatedUser.getPhoneNumber().equals(user.getPhoneNumber())) {
-            if (userRepository.existsByPhoneNumberAndIdNot(updatedUser.getPhoneNumber(), userId)) {
-                throw new ValidationException("Số điện thoại đã được sử dụng");
+        // Nếu updatedUser là null, chỉ update ảnh
+        if (updatedUser != null) {
+            // Update các trường cơ bản
+            if (updatedUser.getName() != null) user.setName(updatedUser.getName());
+            if (updatedUser.getEmail() != null) user.setEmail(updatedUser.getEmail());
+            if (updatedUser.getGender() != null) user.setGender(updatedUser.getGender());
+            if (updatedUser.getIsEnabled() != null) user.setIsEnabled(updatedUser.getIsEnabled());
+            if (updatedUser.getPassword() != null) user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
+
+            // Update code nếu có thay đổi
+            if (updatedUser.getCode() != null && !updatedUser.getCode().equals(user.getCode())) {
+                if (userRepository.existsByCodeAndIdNot(updatedUser.getCode(), id)) {
+                    throw new ValidationException("Mã sinh viên đã được sử dụng");
+                }
+                user.setCode(updatedUser.getCode());
             }
-            user.setPhoneNumber(updatedUser.getPhoneNumber());
-        }
     
-        if (updatedUser.getEmail() != null && !updatedUser.getEmail().equals(user.getEmail())) {
-            if (userRepository.existsByEmailIgnoreCaseAndIdNot(updatedUser.getEmail(), userId)) {
-                throw new ValidationException("Email đã được sử dụng");
+            // Update phone number nếu có thay đổi
+            if (updatedUser.getPhoneNumber() != null && !updatedUser.getPhoneNumber().equals(user.getPhoneNumber())) {
+                if (userRepository.existsByPhoneNumberAndIdNot(updatedUser.getPhoneNumber(), id)) {
+                    throw new ValidationException("Số điện thoại đã được sử dụng");
+                }
+                user.setPhoneNumber(updatedUser.getPhoneNumber());
             }
-            user.setEmail(updatedUser.getEmail());
-        }
     
-        // Update department if provided
-        if (updatedUser.getDepartment() != null && updatedUser.getDepartment().getId() != 0) {
-            Department department = departmentRepository.findById(updatedUser.getDepartment().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khoa với ID: " + updatedUser.getDepartment().getId()));
-            user.setDepartment(department);
+            // Update department nếu có thay đổi
+            if (updatedUser.getDepartment() != null && updatedUser.getDepartment().getId() != 0) {
+                Department department = departmentRepository.findById(updatedUser.getDepartment().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khoa với ID: " + updatedUser.getDepartment().getId()));
+                user.setDepartment(department);
+            }
+
+            // Update major nếu có thay đổi
+            if (updatedUser.getMajor() != null && updatedUser.getMajor().getId() != 0) {
+                Major major = majorRepository.findById(updatedUser.getMajor().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành với ID: " + updatedUser.getMajor().getId()));
+                user.setMajor(major);
+            }
+
+            // Update role nếu có thay đổi
+            if (updatedUser.getRole() != null && updatedUser.getRole().getId() != null) {
+                Role role = roleRepository.findById(updatedUser.getRole().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò"));
+                user.setRole(role);
+            }
         }
 
-        // Update major if provided
-        if (updatedUser.getMajor() != null && updatedUser.getMajor().getId() != 0) {
-            Major major = majorRepository.findById(updatedUser.getMajor().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ngành với ID: " + updatedUser.getMajor().getId()));
-            user.setMajor(major);
+        // Handle image upload
+        if (imageFile != null && !imageFile.isEmpty()) {
+            String contentType = imageFile.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new ValidationException("Chỉ được phép tải lên file ảnh!");
+            }
+
+            // Delete old image if exists and not default image
+            if (user.getImageUrl() != null && !user.getImageUrl().equals("https://static.vecteezy.com/system/resources/thumbnails/020/765/399/small/default-profile-account-unknown-icon-black-silhouette-free-vector.jpg")) {
+                cloudinaryService.deleteImage(user.getImageUrl());
+            }
+            // Upload new image
+            String imageUrl = cloudinaryService.uploadImage(imageFile, "users");
+            user.setImageUrl(imageUrl);
         }
+
+        user.setModifiedBy(currentUser);
+        user.setModifiedAt(LocalDateTime.now());
     
-        updateUserFields(user, updatedUser);
-    
-        if (updatedUser.getRole() != null && updatedUser.getRole().getId() != null) {
-            Role role = roleRepository.findById(updatedUser.getRole().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò"));
-            user.setRole(role);
-        }
-    
-        User savedUser = userRepository.save(user);
+        // Save and flush to ensure changes are committed immediately
+        User savedUser = userRepository.saveAndFlush(user);
+        userRepository.flush(); // Force flush to database
+
+        // Log để debug
+        System.out.println("Saved user data: " + savedUser);
+
         return userMapper.toDTO(savedUser);
     }
 
@@ -172,7 +209,7 @@ public class UserService {
         if (updatedUser.getPassword() != null) user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
         if (updatedUser.getName() != null) user.setName(updatedUser.getName());
         if (updatedUser.getGender() != null) user.setGender(updatedUser.getGender());
-        if (updatedUser.getImage() != null) user.setImage(updatedUser.getImage());
+        if (updatedUser.getImageUrl() != null) user.setImageUrl(updatedUser.getImageUrl());
         if (updatedUser.getIsEnabled() != null) user.setIsEnabled(updatedUser.getIsEnabled());
     }
     
@@ -310,4 +347,5 @@ public class UserService {
                 .map(classEntityMapper::toDTO)
                 .collect(Collectors.toList());
     }
+
 }
