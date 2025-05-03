@@ -91,7 +91,6 @@ public class ExamService {
             throw new RuntimeException("Thời gian làm bài không hợp lệ!");
         }
 
-        exam.setPassScore(examRequest.getPassScore());
         exam.setIsPublic(examRequest.getIsPublic());
         exam.setVisibility(convertVisibilityScope(subject.getVisibility()));
 
@@ -208,6 +207,13 @@ public class ExamService {
                 throw new RuntimeException("Không thể hoàn thành: Có câu hỏi chưa hoàn thành (chưa có đáp án đầy đủ)!");
             }
             
+            // Tính tổng điểm và điểm đạt
+            int totalScore = exam.getExamQuestions().stream()
+                .mapToInt(ExamQuestion::getPoint)
+                .sum();
+            exam.setMaxScore(totalScore);
+            exam.setPassScore((int) Math.ceil(totalScore * 0.6)); // Điểm đạt là 60% tổng điểm
+            
             if(Boolean.FALSE.equals(exam.getIsPublic())) {
                 if (startAt == null || startAt.isBefore(exam.getCreatedAt().plusMinutes(30))) {
                     throw new RuntimeException("Thời gian bắt đầu phải cách thời gian tạo ít nhất 30 phút!");
@@ -251,7 +257,6 @@ public class ExamService {
             throw new RuntimeException("Thời gian làm bài không hợp lệ!");
         }
 
-        exam.setPassScore(examRequest.getPassScore());
         exam.setIsPublic(true);
         exam.setVisibility(examRequest.getVisibility());
 

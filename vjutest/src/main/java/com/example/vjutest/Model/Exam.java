@@ -52,7 +52,7 @@ public class Exam {
     @Column(name = "visibility", nullable = false)
     private ExamVisibility visibility;
 
-    @Column(name = "pass_score", nullable = false)
+    @Column(name = "pass_score")
     private Integer passScore;
 
     @Column(name = "is_public", nullable = false)
