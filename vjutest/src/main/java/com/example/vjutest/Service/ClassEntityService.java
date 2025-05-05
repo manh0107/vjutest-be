@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Set;
+import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,12 +42,14 @@ public class ClassEntityService {
     private final SubjectRepository subjectRepository;
     private final ClassSubjectRepository classSubjectRepository;
     private final UserMapper userMapper;
+    private final GoogleDriveService googleDriveService;
 
     @Autowired
     public ClassEntityService(ClassEntityRepository classEntityRepository, UserRepository userRepository, 
                             JoinRequestRepository joinRequestRepository, DepartmentRepository departmentRepository,
                             MajorRepository majorRepository, SubjectRepository subjectRepository,
-                            ClassSubjectRepository classSubjectRepository, UserMapper userMapper) {
+                            ClassSubjectRepository classSubjectRepository, UserMapper userMapper,
+                            GoogleDriveService googleDriveService) {
         this.classEntityRepository = classEntityRepository;
         this.userRepository = userRepository;
         this.joinRequestRepository = joinRequestRepository;
@@ -55,6 +58,7 @@ public class ClassEntityService {
         this.subjectRepository = subjectRepository;
         this.classSubjectRepository = classSubjectRepository;
         this.userMapper = userMapper;
+        this.googleDriveService = googleDriveService;
     }
 
     // Kiểm tra user có quyền thao tác trên lớp không (chỉ giáo viên tạo lớp hoặc admin)
@@ -462,8 +466,14 @@ public class ClassEntityService {
         Subject subject = subjectRepository.findById(subjectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Môn học không tồn tại"));
 
-        // Kiểm tra môn học có thuộc cùng major không
-        if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
+        // Kiểm tra môn học có thuộc cùng khoa/ngành không
+        if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
+            boolean isSubjectInDepartment = subject.getDepartments().stream()
+                    .anyMatch(department -> classEntity.getDepartments().contains(department));
+            if (!isSubjectInDepartment) {
+                throw new UnauthorizedAccessException("Môn học không thuộc cùng khoa với lớp học");
+            }
+        } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
             boolean isSubjectInMajor = subject.getMajors().stream()
                     .anyMatch(major -> classEntity.getMajors().contains(major));
             if (!isSubjectInMajor) {
@@ -509,5 +519,107 @@ public class ClassEntityService {
         return classSubjectRepository.findByClassEntity(classEntity).stream()
                 .map(ClassSubject::getSubject)
                 .collect(Collectors.toList());
+    }
+
+    // Lấy danh sách lớp học theo môn học
+    public List<ClassEntity> getClassesBySubject(Long subjectId) {
+        Subject subject = subjectRepository.findById(subjectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Môn học không tồn tại"));
+
+        return classSubjectRepository.findBySubject(subject).stream()
+                .map(ClassSubject::getClassEntity)
+                .collect(Collectors.toList());
+    }
+
+    public List<ClassSubject> getDocumentsInClass(Long classId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
+        return classSubjectRepository.findByClassEntity(classEntity).stream()
+                .filter(classSubject -> classSubject.getDocumentUrl() != null)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteDocumentFromClass(Long classId, Long documentId, Long userId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
+        if (!isAuthorized(userId, classEntity)) {
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa tài liệu khỏi lớp này");
+        }
+
+        ClassSubject classSubject = classSubjectRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tài liệu không tồn tại"));
+
+        if (!classSubject.getClassEntity().equals(classEntity)) {
+            throw new UnauthorizedAccessException("Tài liệu không thuộc về lớp học này");
+        }
+
+        // Xóa file trên Google Drive
+        try {
+            googleDriveService.deleteFile(classSubject.getDocumentUrl());
+        } catch (IOException e) {
+            throw new RuntimeException("Lỗi khi xóa file trên Google Drive: " + e.getMessage());
+        }
+
+        // Xóa URL trong database
+        classSubject.setDocumentUrl(null);
+        classSubjectRepository.save(classSubject);
+    }
+
+    public List<JoinRequest> getJoinRequestsInClass(Long classId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
+        return classEntity.getJoinRequests().stream()
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void approveJoinRequest(Long classId, Long requestId, Long userId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
+        if (!isAuthorized(userId, classEntity)) {
+            throw new UnauthorizedAccessException("Bạn không có quyền phê duyệt yêu cầu tham gia lớp này");
+        }
+
+        JoinRequest joinRequest = joinRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Yêu cầu tham gia không tồn tại"));
+
+        if (!joinRequest.getClassEntity().equals(classEntity)) {
+            throw new UnauthorizedAccessException("Yêu cầu tham gia không thuộc về lớp học này");
+        }
+
+        if (joinRequest.getType() == JoinRequest.Type.STUDENT_REQUEST) {
+            classEntity.getUsers().add(joinRequest.getUser());
+        } else if (joinRequest.getType() == JoinRequest.Type.TEACHER_INVITE) {
+            classEntity.getTeachers().add(joinRequest.getUser());
+        }
+
+        joinRequest.setStatus(JoinRequest.Status.APPROVED);
+        joinRequestRepository.save(joinRequest);
+        classEntityRepository.save(classEntity);
+    }
+
+    @Transactional
+    public void rejectJoinRequest(Long classId, Long requestId, Long userId) {
+        ClassEntity classEntity = classEntityRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lớp học không tồn tại"));
+
+        if (!isAuthorized(userId, classEntity)) {
+            throw new UnauthorizedAccessException("Bạn không có quyền từ chối yêu cầu tham gia lớp này");
+        }
+
+        JoinRequest joinRequest = joinRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Yêu cầu tham gia không tồn tại"));
+
+        if (!joinRequest.getClassEntity().equals(classEntity)) {
+            throw new UnauthorizedAccessException("Yêu cầu tham gia không thuộc về lớp học này");
+        }
+
+        joinRequest.setStatus(JoinRequest.Status.REJECTED);
+        joinRequestRepository.save(joinRequest);
     }
 }

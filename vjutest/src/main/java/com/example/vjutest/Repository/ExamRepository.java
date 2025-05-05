@@ -5,8 +5,11 @@ import com.example.vjutest.Model.Subject;
 import com.example.vjutest.Model.User;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -23,4 +26,8 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
     List<Exam> findByClassSubject_Subject_IdAndIsPublicTrue(Long subjectId);
     List<Exam> findByCreatedBy(User createdBy);
     int countBySubject(Subject subject);
+    boolean existsByExamCode(String examCode);
+
+    @Query("SELECT e FROM Exam e WHERE e.status = :status AND e.endAt < :now")
+    List<Exam> findByStatusAndEndAtBefore(@Param("status") Exam.Status status, @Param("now") LocalDateTime now);
 }

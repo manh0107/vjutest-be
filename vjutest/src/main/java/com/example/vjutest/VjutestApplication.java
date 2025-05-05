@@ -10,11 +10,13 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EntityScan(basePackages = "com.example.vjutest")
 @EnableJpaRepositories(basePackages = "com.example.vjutest")
 @EnableTransactionManagement
+@EnableScheduling
 public class VjutestApplication {
 
 	 public static void main(String[] args) {

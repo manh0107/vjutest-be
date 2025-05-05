@@ -40,6 +40,7 @@ public class ExamMapper {
         dto.setIsPublic(exam.getIsPublic());
         dto.setStatus(exam.getStatus());
         dto.setVisibility(exam.getVisibility());
+        dto.setQuestionsCount(exam.getQuestionsCount() != null ? exam.getQuestionsCount() : exam.getTotalQuestions());
         dto.setStartAt(exam.getStartAt());
         dto.setEndAt(exam.getEndAt());
         dto.setCreatedAt(exam.getCreatedAt());
@@ -97,6 +98,7 @@ public class ExamMapper {
         dto.setDurationTime(exam.getDurationTime());
         dto.setPassScore(exam.getPassScore());
         dto.setMaxScore(exam.getMaxScore());
+        dto.setQuestionsCount(exam.getQuestionsCount() != null ? exam.getQuestionsCount() : exam.getTotalQuestions());
         dto.setIsPublic(exam.getIsPublic());
         dto.setStatus(exam.getStatus());
         dto.setVisibility(exam.getVisibility());

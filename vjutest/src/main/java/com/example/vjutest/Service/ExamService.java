@@ -11,6 +11,7 @@ import com.example.vjutest.Model.*;
 import com.example.vjutest.Repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,19 +42,8 @@ public class ExamService {
     private final ExamTakingService examTakingService;
     private final DepartmentRepository departmentRepository;
     private final MajorRepository majorRepository;
-
-    private Exam.ExamVisibility convertVisibilityScope(Subject.VisibilityScope scope) {
-        switch (scope) {
-            case PUBLIC:
-                return Exam.ExamVisibility.PUBLIC;
-            case DEPARTMENT:
-                return Exam.ExamVisibility.DEPARTMENT;
-            case MAJOR:
-                return Exam.ExamVisibility.MAJOR;
-            default:
-                return Exam.ExamVisibility.PUBLIC;
-        }
-    }
+    @Autowired
+    private QuestionService questionService;
 
     //Tạo bài kiểm tra trong lớp học
     @Transactional
@@ -71,6 +61,11 @@ public class ExamService {
             throw new RuntimeException("Bạn không có quyền tạo bài kiểm tra!");
         }
 
+        // Kiểm tra examCode không được trùng
+        if (examRequest.getExamCode() != null && examRepository.existsByExamCode(examRequest.getExamCode())) {
+            throw new RuntimeException("Mã bài kiểm tra đã tồn tại!");
+        }
+
         // Kiểm tra xem môn học đã có trong lớp chưa, nếu chưa thì thêm vào
         ClassSubject classSubject = classSubjectRepository.findByClassEntity_IdAndSubject_Id(classId, subjectId)
                 .orElseGet(() -> {
@@ -86,13 +81,24 @@ public class ExamService {
         exam.setExamCode(examRequest.getExamCode() != null ? examRequest.getExamCode() : "E-" + subjectId + "-" + System.currentTimeMillis());
         exam.setDescription(examRequest.getDescription());
         
-        exam.setDurationTime(examRequest.getDurationTime());
-        if (examRequest.getDurationTime() < 0) {
-            throw new RuntimeException("Thời gian làm bài không hợp lệ!");
-        }
-
+        // Thời gian làm bài sẽ được set sau khi hoàn thành bài kiểm tra
+        exam.setDurationTime(0L);
         exam.setIsPublic(examRequest.getIsPublic());
-        exam.setVisibility(convertVisibilityScope(subject.getVisibility()));
+        
+        // Lấy phạm vi hiển thị từ lớp học
+        exam.setVisibility(classEntity.getVisibility() == ClassEntity.VisibilityScope.PUBLIC ? 
+            Exam.ExamVisibility.PUBLIC : 
+            (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT ? 
+                Exam.ExamVisibility.DEPARTMENT : 
+                Exam.ExamVisibility.MAJOR));
+
+        // Lấy danh sách khoa và ngành từ lớp học
+        if (classEntity.getDepartments() != null && !classEntity.getDepartments().isEmpty()) {
+            exam.setDepartments(new HashSet<>(classEntity.getDepartments()));
+        }
+        if (classEntity.getMajors() != null && !classEntity.getMajors().isEmpty()) {
+            exam.setMajors(new HashSet<>(classEntity.getMajors()));
+        }
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -125,10 +131,13 @@ public class ExamService {
         List<Exam> exams;
 
         if ("admin".equals(user.getRole().getName())) {
+            // Admin có thể xem tất cả bài kiểm tra trong lớp
             exams = examRepository.findByClassSubject_ClassEntity_IdAndClassSubject_Subject_Id(classId, subjectId);
         } else if ("teacher".equals(user.getRole().getName())) {
-            exams = examRepository.findByClassSubject_ClassEntity_IdAndClassSubject_Subject_Id(classId, subjectId);
+            // Giáo viên chỉ xem được bài kiểm tra do mình tạo trong lớp
+            exams = examRepository.findByClassSubject_ClassEntity_IdAndClassSubject_Subject_IdAndCreatedBy(classId, subjectId, user);
         } else if ("student".equals(user.getRole().getName())) {
+            // Sinh viên chỉ xem được bài kiểm tra trong lớp của mình
             boolean isStudentInClass = classEntity.getUsers().contains(user);
             if (isStudentInClass) {
                 exams = examRepository.findByClassSubject_ClassEntity_IdAndClassSubject_Subject_Id(classId, subjectId);
@@ -183,7 +192,7 @@ public class ExamService {
 
     // Hoàn thành bài kiểm tra
     @Transactional
-    public ExamDTO updateExamStatus(Long examId, Exam.Status newStatus, LocalDateTime startAt, LocalDateTime endAt, Long userId) {
+    public ExamDTO updateExamStatus(Long examId, Exam.Status newStatus, LocalDateTime startAt, LocalDateTime endAt, Long userId, Integer passPercent, Long durationTime) {
         Exam exam = examRepository.findById(examId)
                 .orElseThrow(() -> new RuntimeException("Bài kiểm tra không tồn tại!"));
         User user = userRepository.findById(userId)
@@ -194,9 +203,11 @@ public class ExamService {
             throw new RuntimeException("Bạn không có quyền cập nhật bài kiểm tra này!");
         }
 
-        if(exam.getTotalQuestions() < 10) {
+        int totalQuestions = exam.getExamQuestions().size();
+        if(totalQuestions < 10) {
             throw new RuntimeException("Bài kiểm tra phải có ít nhất 10 câu hỏi!");
         }
+        exam.setQuestionsCount(totalQuestions); // luôn cập nhật số lượng câu hỏi
 
         if (newStatus == Exam.Status.PUBLISHED) {
             boolean hasIncomplete = exam.getExamQuestions().stream()
@@ -206,14 +217,27 @@ public class ExamService {
             if (hasIncomplete) {
                 throw new RuntimeException("Không thể hoàn thành: Có câu hỏi chưa hoàn thành (chưa có đáp án đầy đủ)!");
             }
-            
             // Tính tổng điểm và điểm đạt
             int totalScore = exam.getExamQuestions().stream()
                 .mapToInt(ExamQuestion::getPoint)
                 .sum();
             exam.setMaxScore(totalScore);
-            exam.setPassScore((int) Math.ceil(totalScore * 0.6)); // Điểm đạt là 60% tổng điểm
-            
+            int percent = (passPercent != null && passPercent > 0 && passPercent < 100) ? passPercent : 60;
+            exam.setPassScore((int) Math.ceil(totalScore * percent / 100.0));
+
+            // Kiểm tra và set thời gian làm bài
+            long minDuration = (long) Math.ceil(totalQuestions * 1.5); // 1.5 phút cho mỗi câu hỏi
+            if (durationTime != null && durationTime > 0) {
+                if (durationTime < minDuration) {
+                    throw new RuntimeException("Thời gian làm bài phải lớn hơn hoặc bằng " + minDuration + " phút (1.5 phút mỗi câu)");
+                }
+                exam.setDurationTime(durationTime);
+            } else {
+                if (exam.getDurationTime() < minDuration) {
+                    exam.setDurationTime(minDuration);
+                }
+            }
+
             if(Boolean.FALSE.equals(exam.getIsPublic())) {
                 if (startAt == null || startAt.isBefore(exam.getCreatedAt().plusMinutes(30))) {
                     throw new RuntimeException("Thời gian bắt đầu phải cách thời gian tạo ít nhất 30 phút!");
@@ -221,8 +245,8 @@ public class ExamService {
                 exam.setStartAt(startAt);
                 exam.setEndAt(startAt.plusMinutes(exam.getDurationTime()));
             } else {
-                exam.setStartAt(LocalDateTime.MIN);
-                exam.setEndAt(LocalDateTime.MAX);
+                exam.setStartAt(LocalDateTime.of(1000, 1, 1, 0, 0));
+                exam.setEndAt(LocalDateTime.of(9999, 12, 31, 23, 59));
             } 
         } 
 
@@ -244,6 +268,11 @@ public class ExamService {
         // Kiểm tra quyền tạo bài kiểm tra (Chỉ admin hoặc giáo viên mới có quyền)
         if (!"admin".equals(user.getRole().getName()) && !"teacher".equals(user.getRole().getName())) {
             throw new RuntimeException("Bạn không có quyền tạo bài kiểm tra!");
+        }
+
+        // Kiểm tra examCode không được trùng
+        if (examRequest.getExamCode() != null && examRepository.existsByExamCode(examRequest.getExamCode())) {
+            throw new RuntimeException("Mã bài kiểm tra đã tồn tại!");
         }
 
         // Tạo bài kiểm tra
@@ -507,16 +536,15 @@ public class ExamService {
             throw new RuntimeException("Bạn không có quyền cập nhật bài kiểm tra này!");
         }
 
+        // Kiểm tra examCode không được trùng với bài kiểm tra khác
+        if (examRequest.getExamCode() != null && !examRequest.getExamCode().equals(exam.getExamCode()) 
+            && examRepository.existsByExamCode(examRequest.getExamCode())) {
+            throw new RuntimeException("Mã bài kiểm tra đã tồn tại!");
+        }
+
         exam.setName(examRequest.getName());
         exam.setDescription(examRequest.getDescription());
-
-        if (examRequest.getDurationTime() < 0) {
-            throw new RuntimeException("Thời gian làm bài không hợp lệ!");
-        }
-        exam.setDurationTime(examRequest.getDurationTime());
-
-        exam.setPassScore(examRequest.getPassScore());
-        exam.setIsPublic(examRequest.getIsPublic());
+        exam.setExamCode(examRequest.getExamCode());
         exam.setModifiedBy(user);
         exam.setModifiedAt(LocalDateTime.now());
 
@@ -542,15 +570,15 @@ public class ExamService {
             throw new RuntimeException("Bài kiểm tra này thuộc lớp học, không thể cập nhật bằng phương thức này!");
         }
 
+        // Kiểm tra examCode không được trùng với bài kiểm tra khác
+        if (examRequest.getExamCode() != null && !examRequest.getExamCode().equals(exam.getExamCode()) 
+            && examRepository.existsByExamCode(examRequest.getExamCode())) {
+            throw new RuntimeException("Mã bài kiểm tra đã tồn tại!");
+        }
+
         exam.setName(examRequest.getName());
         exam.setDescription(examRequest.getDescription());
-
-        if (examRequest.getDurationTime() < 0) {
-            throw new RuntimeException("Thời gian làm bài không hợp lệ!");
-        }
-        exam.setDurationTime(examRequest.getDurationTime());
-
-        exam.setPassScore(examRequest.getPassScore());
+        exam.setExamCode(examRequest.getExamCode());
         exam.setModifiedBy(user);
         exam.setModifiedAt(LocalDateTime.now());
 
@@ -599,5 +627,74 @@ public class ExamService {
                 .orElse(0.0));
 
         return statistics;
+    }
+
+    @Transactional
+    public void closeExam(Long examId, Long userId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Bài kiểm tra không tồn tại!"));
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        
+        if(!exam.getCreatedBy().equals(user) && !"admin".equals(user.getRole().getName())) {
+            throw new RuntimeException("Bạn không có quyền đóng bài kiểm tra này!");
+        }
+        
+        exam.setStatus(Exam.Status.CLOSED);
+        exam.setModifiedBy(user);
+        examRepository.save(exam);
+
+        // Tự động thêm câu hỏi public vào chương tương ứng
+        questionService.autoAddPublicQuestionsToChapters(exam);
+    }
+
+    @Transactional
+    public void deleteQuestionFromExam(Long questionId, Long examId, Long userId) {
+        // Kiểm tra bài kiểm tra có tồn tại không
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Bài kiểm tra không tồn tại!"));
+
+        // Kiểm tra quyền xóa câu hỏi
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        
+        if (!exam.getCreatedBy().equals(user) && !"admin".equals(user.getRole().getName())) {
+            throw new RuntimeException("Bạn không có quyền xóa câu hỏi khỏi bài kiểm tra này!");
+        }
+
+        // Kiểm tra trạng thái bài kiểm tra
+        if (exam.getStatus() != Exam.Status.DRAFT) {
+            throw new RuntimeException("Chỉ có thể xóa câu hỏi khi bài kiểm tra đang ở trạng thái DRAFT!");
+        }
+
+        // Tìm và xóa câu hỏi khỏi bài kiểm tra
+        ExamQuestion examQuestion = exam.getExamQuestions().stream()
+                .filter(eq -> eq.getQuestion().getId().equals(questionId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Câu hỏi không tồn tại trong bài kiểm tra!"));
+
+        exam.getExamQuestions().remove(examQuestion);
+        exam.setQuestionsCount(exam.getTotalQuestions() - 1);
+        exam.setModifiedAt(LocalDateTime.now());
+        exam.setModifiedBy(user);
+
+        examRepository.save(exam);
+    }
+
+    @Transactional
+    public ExamDTO revertToDraft(Long examId, Long userId) {
+        Exam exam = examRepository.findById(examId)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+        if (!exam.getCreatedBy().equals(user) && !"admin".equals(user.getRole().getName())) {
+            throw new RuntimeException("Bạn không có quyền chuyển trạng thái bài kiểm tra này!");
+        }
+        exam.setStatus(Exam.Status.DRAFT);
+        exam.setModifiedBy(user);
+        exam.setModifiedAt(LocalDateTime.now());
+        examRepository.save(exam);
+        return examMapper.toFullDTO(exam);
     }
 }

@@ -42,4 +42,7 @@ public class QuestionDTO {
     private List<ExamQuestionDTO> examQuestions;
 
     private String imageUrl;
+
+    @JsonProperty("markedAsPublic")
+    private Boolean markedAsPublic;
 }

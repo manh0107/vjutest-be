@@ -122,4 +122,33 @@ public class GoogleDriveService {
         return folders.isEmpty() ? null : folders.get(0).getId();
     }
     
+    public void deleteFile(String fileUrl) throws IOException {
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            throw new IllegalArgumentException("URL file không hợp lệ");
+        }
+
+        try {
+            // Lấy file ID từ URL
+            String fileId = extractFileIdFromUrl(fileUrl);
+            if (fileId == null) {
+                throw new IllegalArgumentException("Không thể lấy file ID từ URL");
+            }
+
+            // Xóa file trên Google Drive
+            driveService.files().delete(fileId).execute();
+        } catch (Exception e) {
+            throw new IOException("Lỗi khi xóa file trên Google Drive: " + e.getMessage());
+        }
+    }
+
+    private String extractFileIdFromUrl(String fileUrl) {
+        // URL có dạng: https://drive.google.com/file/d/{fileId}/view?usp=sharing
+        String[] parts = fileUrl.split("/");
+        for (int i = 0; i < parts.length; i++) {
+            if (parts[i].equals("d") && i + 1 < parts.length) {
+                return parts[i + 1];
+            }
+        }
+        return null;
+    }
 }

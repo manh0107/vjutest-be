@@ -80,7 +80,9 @@ public class ExamController {
                 request.getNewStatus(),
                 request.getStartAt(),
                 request.getEndAt(),
-                userId
+                userId,
+                request.getPassPercent(),
+                request.getDurationTime()
         );
         return ResponseEntity.ok(updatedExam);
     }
@@ -220,5 +222,26 @@ public class ExamController {
 
         Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(examService.getExamStatistics(examId, userId));
+    }
+
+    // Xoá câu hỏi khỏi bài kiểm tra
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TEACHER')")
+    @DeleteMapping("/delete-question/{questionId}")
+    public ResponseEntity<Void> deleteQuestionFromExam(
+            @PathVariable Long questionId,
+            @RequestParam Long examId,
+            Authentication authentication) {
+
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        examService.deleteQuestionFromExam(questionId, examId, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{examId}/to-draft")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    public ResponseEntity<ExamDTO> revertToDraft(@PathVariable Long examId, Authentication authentication) {
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        ExamDTO exam = examService.revertToDraft(examId, userId);
+        return ResponseEntity.ok(exam);
     }
 }

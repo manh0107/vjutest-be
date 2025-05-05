@@ -122,12 +122,17 @@ public class QuestionService {
         question.setCreatedBy(user);
         question.setModifiedBy(user);
         
-        if(Boolean.TRUE.equals(exam.getIsPublic())) {
-            question.setIsPublic(true); 
+        // Xử lý trạng thái public khác nhau giữa bài kiểm tra trong lớp và ngoài lớp
+        if (exam.getClassSubject() != null) {
+            // Bài kiểm tra trong lớp: luôn set isPublic = false, lưu trạng thái public vào markedAsPublic
+            question.setIsPublic(false);
+            question.setMarkedAsPublic(questionRequest.getIsPublic());
         } else {
-            question.setIsPublic(questionRequest.getIsPublic());
+            // Bài kiểm tra ngoài lớp: luôn public
+            question.setIsPublic(true);
+            question.setMarkedAsPublic(true);
         }
-
+        
         question.setChapter(chapter);
 
         // Handle image upload
@@ -155,6 +160,7 @@ public class QuestionService {
         savedQuestion.setExamQuestions(createdExamQuestions);
 
         exam.updateMaxScore();
+        exam.setQuestionsCount(exam.getExamQuestions().size());
         examRepository.save(exam);
         
         return questionMapper.toFullDTO(savedQuestion);
@@ -197,6 +203,11 @@ public class QuestionService {
             if (!hasAccess && !"admin".equals(user.getRole().getName())) {
                 throw new UnauthorizedAccessException("Bạn không có quyền thêm câu hỏi cho môn học này!");
             }
+        }
+
+        // Chỉ cho phép thêm câu hỏi khi bài kiểm tra đã kết thúc
+        if (exam.getStatus() != Exam.Status.CLOSED) {
+            throw new UnauthorizedAccessException("Chỉ có thể thêm câu hỏi công khai vào bài kiểm tra sau khi bài kiểm tra đã kết thúc!");
         }
     
         for (Long qId : questionIds) {
@@ -310,16 +321,21 @@ public class QuestionService {
         question.setModifiedAt(LocalDateTime.now());
         question.setModifiedBy(user);
 
-        if (Boolean.TRUE.equals(exam.getIsPublic())) {
-            question.setIsPublic(true);
+        // Xử lý trạng thái public khác nhau giữa bài kiểm tra trong lớp và ngoài lớp
+        if (exam.getClassSubject() != null) {
+            // Bài kiểm tra trong lớp: luôn set isPublic = false, lưu trạng thái public vào markedAsPublic
+            question.setIsPublic(false);
+            question.setMarkedAsPublic(questionRequest.getIsPublic());
         } else {
-            question.setIsPublic(false); // Giữ private
+            // Bài kiểm tra ngoài lớp: luôn public
+            question.setIsPublic(true);
+            question.setMarkedAsPublic(true);
         }
 
         Question savedQuestion = questionRepository.save(question);
         List<ExamQuestion> createdExamQuestions = new ArrayList<>();
 
-        // Lặp qua các câu hỏi trong bài kiểm tra để tạo ExamQuestion
+        // Lặp qua các câu hỏi trong bài kiểm tra để cập nhật điểm
         if (questionRequest.getExamQuestions() != null && !questionRequest.getExamQuestions().isEmpty()) {
             for (ExamQuestionDTO examQuestionDTO : questionRequest.getExamQuestions()) {
                 Integer point = examQuestionDTO.getPoint();
@@ -327,13 +343,24 @@ public class QuestionService {
                     throw new RuntimeException("Điểm của câu hỏi không hợp lệ!");
                 }
 
-                createdExamQuestions.add(examQuestionService.createExamQuestion(exam, savedQuestion, point));
+                // Tìm ExamQuestion hiện có
+                ExamQuestion existingExamQuestion = examQuestionRepository.findByExamAndQuestion(exam, savedQuestion)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy câu hỏi trong bài kiểm tra"));
+
+                // Cập nhật điểm
+                existingExamQuestion.setPoint(point);
+                examQuestionRepository.save(existingExamQuestion);
+                createdExamQuestions.add(existingExamQuestion);
             }
         }
 
         savedQuestion.setExamQuestions(createdExamQuestions);
 
-        exam.updateMaxScore();
+        int maxScore = exam.getExamQuestions().stream()
+                .mapToInt(ExamQuestion::getPoint)
+                .sum();
+        exam.setMaxScore(maxScore);
+        exam.setQuestionsCount(exam.getExamQuestions().size());
         examRepository.save(exam);
 
         return questionMapper.toFullDTO(savedQuestion);
@@ -393,6 +420,86 @@ public class QuestionService {
 
     public List<Question> getCompletedQuestionsByChapter(Long chapterId) {
         return questionRepository.findByChapterIdAndIsCompletedTrue(chapterId);
+    }
+
+    // Tự động thêm câu hỏi public vào chương tương ứng khi bài kiểm tra kết thúc
+    @Transactional
+    public void autoAddPublicQuestionsToChapters(Exam exam) {
+        if (exam.getStatus() != Exam.Status.CLOSED) {
+            return;
+        }
+
+        for (ExamQuestion examQuestion : exam.getExamQuestions()) {
+            Question question = examQuestion.getQuestion();
+            if (question.getMarkedAsPublic()) {
+                question.setIsPublic(true);
+                questionRepository.save(question);
+            }
+        }
+    }
+
+    @Transactional
+    public QuestionDTO duplicateQuestion(Long examId, Long questionId, Long userId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
+
+        Question originalQuestion = questionRepository.findById(questionId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy câu hỏi"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        // Kiểm tra quyền
+        if (!exam.getCreatedBy().getId().equals(userId) && !user.getRole().getName().equals("admin")) {
+            throw new UnauthorizedAccessException("Bạn không có quyền sao chép câu hỏi trong bài kiểm tra này");
+        }
+
+        // Tạo câu hỏi mới từ câu hỏi gốc
+        Question newQuestion = new Question();
+        newQuestion.setName(originalQuestion.getName() + " (Bản sao)");
+        newQuestion.setDifficulty(originalQuestion.getDifficulty());
+        newQuestion.setIsPublic(originalQuestion.getIsPublic());
+        newQuestion.setMarkedAsPublic(originalQuestion.getMarkedAsPublic());
+        newQuestion.setCreatedAt(LocalDateTime.now());
+        newQuestion.setModifiedAt(LocalDateTime.now());
+        newQuestion.setCreatedBy(user);
+        newQuestion.setModifiedBy(user);
+        newQuestion.setChapter(originalQuestion.getChapter());
+        newQuestion.setImageUrl(originalQuestion.getImageUrl());
+
+        // Lưu câu hỏi mới
+        Question savedQuestion = questionRepository.save(newQuestion);
+
+        // Sao chép các đáp án
+        List<Answer> originalAnswers = answerRepository.findByQuestionId(questionId);
+        for (Answer originalAnswer : originalAnswers) {
+            Answer newAnswer = new Answer();
+            newAnswer.setAnswerName(originalAnswer.getAnswerName());
+            newAnswer.setIsCorrect(originalAnswer.getIsCorrect());
+            newAnswer.setQuestion(savedQuestion);
+            newAnswer.setCreatedBy(user);
+            newAnswer.setModifiedBy(user);
+            newAnswer.setImageUrl(originalAnswer.getImageUrl());
+            answerRepository.save(newAnswer);
+        }
+
+        // Kiểm tra và set trạng thái hoàn thành cho câu hỏi mới
+        savedQuestion.setIsCompleted(checkIfQuestionIsCompleted(savedQuestion));
+        savedQuestion = questionRepository.save(savedQuestion);
+
+        // Tạo ExamQuestion mới
+        ExamQuestion examQuestion = new ExamQuestion();
+        examQuestion.setExam(exam);
+        examQuestion.setQuestion(savedQuestion);
+        examQuestion.setPoint(1); // Điểm mặc định
+        examQuestionRepository.save(examQuestion);
+
+        // Cập nhật maxScore của exam
+        exam.updateMaxScore();
+        exam.setQuestionsCount(exam.getExamQuestions().size());
+        examRepository.save(exam);
+
+        return questionMapper.toFullDTO(savedQuestion);
     }
 }
 

@@ -42,6 +42,9 @@ public class Question {
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic;
 
+    @Column(name = "marked_as_public", nullable = false)
+    private Boolean markedAsPublic = false;
+
     @Column(name = "is_completed")
     private Boolean isCompleted = false;
 

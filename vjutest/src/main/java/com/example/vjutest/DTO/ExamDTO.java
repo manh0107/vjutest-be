@@ -24,6 +24,8 @@ public class ExamDTO {
     private Long durationTime;
     private Integer passScore;
     private Integer maxScore;
+    private Integer passPercent;
+    private Integer questionsCount;
     private Status status;
 
     @JsonProperty("isPublic")

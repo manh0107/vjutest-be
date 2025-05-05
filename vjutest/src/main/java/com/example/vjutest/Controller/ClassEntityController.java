@@ -13,11 +13,17 @@ import org.springframework.web.bind.annotation.*;
 import com.example.vjutest.DTO.ClassEntityDTO;
 import com.example.vjutest.DTO.UserDTO;
 import com.example.vjutest.DTO.SubjectDTO;
+import com.example.vjutest.DTO.ClassSubjectDTO;
+import com.example.vjutest.DTO.JoinRequestDTO;
 import com.example.vjutest.Mapper.ClassEntityMapper;
 import com.example.vjutest.Mapper.SubjectMapper;
+import com.example.vjutest.Mapper.ClassSubjectMapper;
+import com.example.vjutest.Mapper.JoinRequestMapper;
 import com.example.vjutest.Model.ClassEntity;
 import com.example.vjutest.Model.ClassEntity.VisibilityScope;
 import com.example.vjutest.Model.Subject;
+import com.example.vjutest.Model.ClassSubject;
+import com.example.vjutest.Model.JoinRequest;
 import com.example.vjutest.Service.ClassEntityService;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,12 +36,16 @@ public class ClassEntityController {
     private final ClassEntityService classEntityService;
     private final ClassEntityMapper classEntityMapper;
     private final SubjectMapper subjectMapper;
+    private final ClassSubjectMapper classSubjectMapper;
+    private final JoinRequestMapper joinRequestMapper;
 
     @Autowired
-    public ClassEntityController(ClassEntityService classEntityService, ClassEntityMapper classEntityMapper, SubjectMapper subjectMapper) {
+    public ClassEntityController(ClassEntityService classEntityService, ClassEntityMapper classEntityMapper, SubjectMapper subjectMapper, ClassSubjectMapper classSubjectMapper, JoinRequestMapper joinRequestMapper) {
         this.classEntityService = classEntityService;
         this.classEntityMapper = classEntityMapper;
         this.subjectMapper = subjectMapper;
+        this.classSubjectMapper = classSubjectMapper;
+        this.joinRequestMapper = joinRequestMapper;
     }
 
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
@@ -203,6 +213,51 @@ public class ClassEntityController {
                 .map(subjectMapper::toDTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(subjectDTOs);
+    }
+
+    @GetMapping("/{classId}/documents")
+    public ResponseEntity<List<ClassSubjectDTO>> getDocumentsInClass(@PathVariable Long classId) {
+        List<ClassSubject> classSubjects = classEntityService.getDocumentsInClass(classId);
+        List<ClassSubjectDTO> classSubjectDTOs = classSubjects.stream()
+                .map(classSubjectMapper::toFullDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(classSubjectDTOs);
+    }
+
+    @DeleteMapping("/{classId}/documents/{documentId}")
+    public ResponseEntity<Void> deleteDocumentFromClass(
+            @PathVariable Long classId,
+            @PathVariable Long documentId,
+            @RequestParam Long userId) {
+        classEntityService.deleteDocumentFromClass(classId, documentId, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{classId}/join-requests")
+    public ResponseEntity<List<JoinRequestDTO>> getJoinRequestsInClass(@PathVariable Long classId) {
+        List<JoinRequest> joinRequests = classEntityService.getJoinRequestsInClass(classId);
+        List<JoinRequestDTO> joinRequestDTOs = joinRequests.stream()
+                .map(joinRequestMapper::toFullDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(joinRequestDTOs);
+    }
+
+    @PostMapping("/{classId}/join-requests/{requestId}/approve")
+    public ResponseEntity<Void> approveJoinRequest(
+            @PathVariable Long classId,
+            @PathVariable Long requestId,
+            @RequestParam Long userId) {
+        classEntityService.approveJoinRequest(classId, requestId, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{classId}/join-requests/{requestId}/reject")
+    public ResponseEntity<Void> rejectJoinRequest(
+            @PathVariable Long classId,
+            @PathVariable Long requestId,
+            @RequestParam Long userId) {
+        classEntityService.rejectJoinRequest(classId, requestId, userId);
+        return ResponseEntity.ok().build();
     }
 
     @Data

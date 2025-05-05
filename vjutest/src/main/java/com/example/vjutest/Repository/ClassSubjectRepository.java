@@ -19,4 +19,5 @@ public interface ClassSubjectRepository extends JpaRepository<ClassSubject, Long
     int countBySubject(Subject subject);
     boolean existsByClassEntityAndSubject(ClassEntity classEntity, Subject subject);
     List<ClassSubject> findByClassEntity(ClassEntity classEntity);
+    List<ClassSubject> findBySubject(Subject subject);
 }

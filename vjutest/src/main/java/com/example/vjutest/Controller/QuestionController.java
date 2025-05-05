@@ -149,4 +149,15 @@ public class QuestionController {
                     .body(Map.of("error", "Failed to upload image"));
         }
     }
+
+    @PostMapping("/exams/{examId}/questions/{questionId}/duplicate")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
+    public ResponseEntity<QuestionDTO> duplicateQuestion(
+            @PathVariable Long examId,
+            @PathVariable Long questionId,
+            Authentication authentication) {
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        QuestionDTO duplicatedQuestion = questionService.duplicateQuestion(examId, questionId, userId);
+        return ResponseEntity.ok(duplicatedQuestion);
+    }
 }

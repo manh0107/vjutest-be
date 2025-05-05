@@ -14,4 +14,6 @@ public class UpdateExamStatusRequest {
     private Exam.Status newStatus;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
+    private Integer passPercent;
+    private Long durationTime;
 }
