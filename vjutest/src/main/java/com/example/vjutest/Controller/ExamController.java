@@ -9,13 +9,13 @@ import com.example.vjutest.Service.ExamService;
 import com.example.vjutest.User.CustomUserDetails;
 import com.example.vjutest.DTO.ExamStatisticsDTO;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -33,7 +33,7 @@ public class ExamController {
     public ResponseEntity<ExamDTO> createExam(
             @RequestParam Long classId,
             @RequestParam Long subjectId,
-            @RequestBody Exam examRequest,
+            @RequestBody ExamDTO examRequest,
             Authentication authentication) {
 
         Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
@@ -88,18 +88,18 @@ public class ExamController {
     }
 
     // Tạo bài kiểm tra bên ngoài lớp học
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TEACHER')")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_TEACHER')")
     @PostMapping("/create-without-class")
     public ResponseEntity<ExamDTO> createExamWithoutClass(
             @RequestParam Long subjectId,
-            @RequestBody Exam examRequest,
+            @RequestBody ExamDTO examRequest,
             @RequestParam(required = false) List<Long> departmentIds,
             @RequestParam(required = false) List<Long> majorIds,
             Authentication authentication) {
 
         Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
-        ExamDTO createdExam = examService.createExamWithoutClass(subjectId, userId, examRequest, departmentIds, majorIds);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdExam);
+        ExamDTO exam = examService.createExamWithoutClass(subjectId, userId, examRequest, departmentIds, majorIds);
+        return ResponseEntity.ok(exam);
     }
 
     // Lấy danh sách bài kiểm tra public theo môn học
@@ -243,5 +243,36 @@ public class ExamController {
         Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
         ExamDTO exam = examService.revertToDraft(examId, userId);
         return ResponseEntity.ok(exam);
+    }
+
+    // Lấy kết quả làm bài hiện tại (chưa nộp) của sinh viên cho một bài kiểm tra
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @GetMapping("/current-result")
+    public ResponseEntity<ResultDTO> getCurrentResult(
+            @RequestParam Long examId,
+            Authentication authentication) {
+        Long studentId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        ResultDTO result = examService.getCurrentResult(examId, studentId);
+        return ResponseEntity.ok(result);
+    }
+
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @GetMapping("/latest-result")
+    public ResponseEntity<ResultDTO> getLatestSubmittedResult(
+            @RequestParam Long examId,
+            Authentication authentication) {
+        Long studentId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        ResultDTO result = examService.getLatestSubmittedResult(studentId, examId);
+        return ResponseEntity.ok(result);
+    }
+
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @GetMapping("/latest-result-stat")
+    public ResponseEntity<Map<String, Integer>> getLatestResultStat(
+            @RequestParam Long examId,
+            Authentication authentication) {
+        Long studentId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        Map<String, Integer> stat = examService.getCorrectAndWrongAnswers(studentId, examId);
+        return ResponseEntity.ok(stat);
     }
 }

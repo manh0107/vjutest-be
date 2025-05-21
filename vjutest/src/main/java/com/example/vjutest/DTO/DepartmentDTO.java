@@ -1,7 +1,8 @@
 package com.example.vjutest.DTO;
 
 import java.time.LocalDateTime;
-
+import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,6 +12,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class DepartmentDTO {
     private long id;
     private String name;
@@ -20,4 +22,5 @@ public class DepartmentDTO {
     private LocalDateTime modifiedAt;
     private Long modifiedById;
     private String modifiedByName;
+    private List<MajorDTO> majors;
 }

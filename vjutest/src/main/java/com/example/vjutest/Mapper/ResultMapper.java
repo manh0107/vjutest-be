@@ -54,9 +54,17 @@ public class ResultMapper {
         
         if(result.getExam() != null) {
             dto.setExam(examMapper.toFullDTO(result.getExam()));
+            dto.setExamCode(result.getExam().getExamCode());
+            dto.setExamName(result.getExam().getName());
+            dto.setSubjectName(result.getExam().getSubject() != null ? result.getExam().getSubject().getName() : null);
+            // Nếu Exam không có getChapter(), bỏ qua hoặc lấy từ classSubject nếu có
+            // dto.setChapterName(result.getExam().getChapter() != null ? result.getExam().getChapter().getName() : null);
         }
         if(result.getUser() != null) {
             dto.setUser(userMapper.toDTO(result.getUser()));
+            dto.setStudentName(result.getUser().getName());
+            dto.setStudentCode(result.getUser().getCode() != null ? result.getUser().getCode().toString() : null);
+            dto.setStudentAvatar(result.getUser().getImageUrl());
         }
         
         dto.setScore(result.getScore());

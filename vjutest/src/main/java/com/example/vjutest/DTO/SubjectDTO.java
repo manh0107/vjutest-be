@@ -2,7 +2,7 @@ package com.example.vjutest.DTO;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.example.vjutest.Model.Subject.VisibilityScope;
 
 import lombok.AllArgsConstructor;
@@ -14,6 +14,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SubjectDTO {
     private Long id;
     private String name;

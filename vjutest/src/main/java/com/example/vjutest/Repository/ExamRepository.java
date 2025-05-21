@@ -30,4 +30,6 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
 
     @Query("SELECT e FROM Exam e WHERE e.status = :status AND e.endAt < :now")
     List<Exam> findByStatusAndEndAtBefore(@Param("status") Exam.Status status, @Param("now") LocalDateTime now);
+
+    List<Exam> findBySubject_IdAndIsPublicTrueAndStatus(Long subjectId, Exam.Status status);
 }

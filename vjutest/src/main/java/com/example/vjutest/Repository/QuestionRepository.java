@@ -43,4 +43,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     @Query("SELECT CASE WHEN COUNT(q) > 0 THEN true ELSE false END FROM Question q WHERE q.chapter.id = :chapterId AND q.name = :name")
     boolean existsByChapterIdAndName(@Param("chapterId") Long chapterId, @Param("name") String name);
+
+    @Query("SELECT q FROM Question q WHERE q.chapter.id = :chapterId AND q.isPublic = true")
+    List<Question> findByChapterIdAndIsPublicTrue(@Param("chapterId") Long chapterId);
 }

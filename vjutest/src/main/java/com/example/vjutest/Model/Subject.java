@@ -6,6 +6,7 @@ import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -30,10 +31,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Setter
 @Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Table(name = "subjects")
 public class Subject {
 
@@ -64,7 +66,7 @@ public class Subject {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-        name = "subject_major",
+        name = "subject_majors",
         joinColumns = @JoinColumn(name = "subject_id", referencedColumnName = "id"),
         inverseJoinColumns = @JoinColumn(name = "major_id", referencedColumnName = "id")
     )
@@ -72,7 +74,7 @@ public class Subject {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-        name = "subject_department",
+        name = "subject_departments",
         joinColumns = @JoinColumn(name = "subject_id", referencedColumnName = "id"),
         inverseJoinColumns = @JoinColumn(name = "department_id", referencedColumnName = "id")
     )

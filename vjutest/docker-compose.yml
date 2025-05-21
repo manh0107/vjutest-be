@@ -6,6 +6,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: vjutestdb
       MYSQL_PASSWORD: root
+      TZ: Asia/Ho_Chi_Minh
     ports:
       - "3308:3306"
     networks:
@@ -24,13 +25,15 @@ services:
       - "8080:8080"
     environment:
       GOOGLE_CREDENTIALS_PATH: "/app/client_secret.json"
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/vjutestdb?serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/vjutestdb?serverTimezone=Asia/Ho_Chi_Minh
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
       # Cloudinary environment variables
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      TZ: Asia/Ho_Chi_Minh
+      JAVA_OPTS: -Duser.timezone=Asia/Ho_Chi_Minh
     networks:
       - vjutest-mysql
 

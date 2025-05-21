@@ -45,7 +45,7 @@ public class ExamTakingService {
     }
 
     public Duration getRemainingTime(Exam exam, User student) {
-        Result result = resultRepository.findByExamAndUser(exam, student)
+        Result result = resultRepository.findTopByExamAndUserOrderByStartTimeDesc(exam, student)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy kết quả"));
         
         LocalDateTime startTime = result.getStartTime();
@@ -76,7 +76,7 @@ public class ExamTakingService {
         Exam exam = examRepository.findById(examId)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
         
-        Result result = resultRepository.findByExamAndUser(exam, student)
+        Result result = resultRepository.findTopByExamAndUserOrderByStartTimeDesc(exam, student)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy kết quả"));
 
         if (result.getIsSubmitted()) {
@@ -92,6 +92,13 @@ public class ExamTakingService {
         Optional<UserAnswer> existingUserAnswer = Optional.ofNullable(
             userAnswerRepository.findByResultAndQuestion(result, question)
         );
+
+        if (existingUserAnswer.isEmpty()) {
+            List<UserAnswer> all = userAnswerRepository.findByResult(result);
+            existingUserAnswer = all.stream()
+                .filter(ua -> ua.getQuestion().equals(question))
+                .max((a, b) -> Long.compare(a.getId(), b.getId()));
+        }
 
         UserAnswer userAnswer = existingUserAnswer.orElseGet(() -> {
             UserAnswer newUserAnswer = new UserAnswer();
@@ -113,7 +120,7 @@ public class ExamTakingService {
         Exam exam = examRepository.findById(examId)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
         
-        Result result = resultRepository.findByExamAndUser(exam, student)
+        Result result = resultRepository.findTopByExamAndUserOrderByStartTimeDesc(exam, student)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy kết quả"));
 
         if (result.getIsSubmitted()) {
@@ -145,7 +152,7 @@ public class ExamTakingService {
         Exam exam = examRepository.findById(examId)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy bài kiểm tra"));
         
-        Result result = resultRepository.findByExamAndUser(exam, student)
+        Result result = resultRepository.findTopByExamAndUserOrderByStartTimeDesc(exam, student)
             .orElseThrow(() -> new RuntimeException("Không tìm thấy kết quả"));
 
         if (result.getIsSubmitted()) {

@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.example.vjutest.Model.Exam.ExamVisibility;
 import com.example.vjutest.Model.Exam.Status;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.AllArgsConstructor;
@@ -16,6 +17,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ExamDTO {
     private Long id;
     private String name;
@@ -51,4 +53,14 @@ public class ExamDTO {
 
     private List<Long> departmentIds;
     private List<Long> majorIds;
+    private List<Long> selectedDepartments;
+    private List<Long> selectedMajors;
+    
+    private Integer maxAttempts;
+    private Boolean randomQuestions;
+    
+    @JsonProperty("markedAsPublic")
+    private Boolean markedAsPublic;
+
+    private List<Long> chapterIds;
 }

@@ -32,4 +32,11 @@ public class ResultDTO {
 
     public UserDTO user;
     public ExamDTO exam;
+
+    public String studentName;
+    public String studentCode;
+    public String studentAvatar;
+    public String examCode;
+    public String subjectName;
+    public String chapterName;
 }

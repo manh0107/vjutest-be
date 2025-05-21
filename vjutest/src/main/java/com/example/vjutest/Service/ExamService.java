@@ -12,6 +12,8 @@ import com.example.vjutest.Repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +22,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
 
@@ -42,12 +46,13 @@ public class ExamService {
     private final ExamTakingService examTakingService;
     private final DepartmentRepository departmentRepository;
     private final MajorRepository majorRepository;
+    private final ChapterRepository chapterRepository;
     @Autowired
     private QuestionService questionService;
 
     //Tạo bài kiểm tra trong lớp học
     @Transactional
-    public ExamDTO createExam(Long classId, Long subjectId, Long userId, Exam examRequest) {
+    public ExamDTO createExam(Long classId, Long subjectId, Long userId, ExamDTO examRequest) {
         // Kiểm tra lớp học và môn học có tồn tại không
         ClassEntity classEntity = classEntityRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Lớp học không tồn tại!"));
@@ -98,6 +103,10 @@ public class ExamService {
         }
         if (classEntity.getMajors() != null && !classEntity.getMajors().isEmpty()) {
             exam.setMajors(new HashSet<>(classEntity.getMajors()));
+        }
+
+        if (examRequest.getChapterIds() != null && !examRequest.getChapterIds().isEmpty()) {
+            exam.setChapters(new HashSet<>(chapterRepository.findAllById(examRequest.getChapterIds())));
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -258,7 +267,7 @@ public class ExamService {
 
     // Tạo bài kiểm tra bên ngoài lớp học
     @Transactional
-    public ExamDTO createExamWithoutClass(Long subjectId, Long userId, Exam examRequest, List<Long> departmentIds, List<Long> majorIds) {
+    public ExamDTO createExamWithoutClass(Long subjectId, Long userId, ExamDTO examRequest, List<Long> departmentIds, List<Long> majorIds) {
         // Kiểm tra môn học có tồn tại không
         Subject subject = subjectRepository.findById(subjectId)
                 .orElseThrow(() -> new RuntimeException("Môn học không tồn tại!"));
@@ -288,6 +297,8 @@ public class ExamService {
 
         exam.setIsPublic(true);
         exam.setVisibility(examRequest.getVisibility());
+        exam.setMaxAttempts(examRequest.getMaxAttempts() != null ? examRequest.getMaxAttempts() : 1);
+        exam.setRandomQuestions(examRequest.getRandomQuestions() != null ? examRequest.getRandomQuestions() : false);
 
         // Kiểm tra và xử lý phạm vi hiển thị
         if (exam.getVisibility() == Exam.ExamVisibility.DEPARTMENT && (departmentIds == null || departmentIds.isEmpty())) {
@@ -301,10 +312,21 @@ public class ExamService {
         if (departmentIds != null && !departmentIds.isEmpty()) {
             Set<Department> departments = new HashSet<>(departmentRepository.findAllById(departmentIds));
             exam.setDepartments(departments);
+        } else if (examRequest.getSelectedDepartments() != null && !examRequest.getSelectedDepartments().isEmpty()) {
+            Set<Department> departments = new HashSet<>(departmentRepository.findAllById(examRequest.getSelectedDepartments()));
+            exam.setDepartments(departments);
         }
+
         if (majorIds != null && !majorIds.isEmpty()) {
             Set<Major> majors = new HashSet<>(majorRepository.findAllById(majorIds));
             exam.setMajors(majors);
+        } else if (examRequest.getSelectedMajors() != null && !examRequest.getSelectedMajors().isEmpty()) {
+            Set<Major> majors = new HashSet<>(majorRepository.findAllById(examRequest.getSelectedMajors()));
+            exam.setMajors(majors);
+        }
+
+        if (examRequest.getChapterIds() != null && !examRequest.getChapterIds().isEmpty()) {
+            exam.setChapters(new HashSet<>(chapterRepository.findAllById(examRequest.getChapterIds())));
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -339,13 +361,61 @@ public class ExamService {
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         List<Exam> exams;
     
-        // Nếu là student, chỉ lấy bài kiểm tra public
+        // Nếu là student, chỉ lấy bài kiểm tra public ngoài lớp học có status PUBLISHED
         if ("student".equals(user.getRole().getName())) {
-            exams = examRepository.findBySubject_IdAndIsPublicTrue(subjectId);
+            exams = examRepository.findBySubject_IdAndIsPublicTrueAndStatus(subjectId, Exam.Status.PUBLISHED)
+                .stream()
+                .filter(exam -> {
+                    // Nếu là PUBLIC thì cho phép truy cập
+                    if (exam.getVisibility() == Exam.ExamVisibility.PUBLIC) {
+                        return true;
+                    }
+                    
+                    // Nếu là DEPARTMENT, kiểm tra department của user
+                    if (exam.getVisibility() == Exam.ExamVisibility.DEPARTMENT) {
+                        return exam.getDepartments() != null && 
+                               user.getDepartment() != null &&
+                               exam.getDepartments().contains(user.getDepartment());
+                    }
+                    
+                    // Nếu là MAJOR, kiểm tra major của user
+                    if (exam.getVisibility() == Exam.ExamVisibility.MAJOR) {
+                        return exam.getMajors() != null && 
+                               user.getMajor() != null &&
+                               exam.getMajors().contains(user.getMajor());
+                    }
+                    
+                    return false;
+                })
+                .collect(Collectors.toList());
         } 
         // Nếu là teacher, lấy tất cả bài kiểm tra do họ tạo
         else if ("teacher".equals(user.getRole().getName())) {
-            exams = examRepository.findBySubject_IdAndCreatedBy(subjectId, user);
+            exams = examRepository.findBySubject_IdAndCreatedBy(subjectId, user)
+                .stream()
+                .filter(exam -> {
+                    // Nếu là PUBLIC thì cho phép truy cập
+                    if (exam.getVisibility() == Exam.ExamVisibility.PUBLIC) {
+                        return true;
+                    }
+                    
+                    // Nếu là DEPARTMENT, kiểm tra department của user
+                    if (exam.getVisibility() == Exam.ExamVisibility.DEPARTMENT) {
+                        return exam.getDepartments() != null && 
+                               user.getDepartment() != null &&
+                               exam.getDepartments().contains(user.getDepartment());
+                    }
+                    
+                    // Nếu là MAJOR, kiểm tra major của user
+                    if (exam.getVisibility() == Exam.ExamVisibility.MAJOR) {
+                        return exam.getMajors() != null && 
+                               user.getMajor() != null &&
+                               exam.getMajors().contains(user.getMajor());
+                    }
+                    
+                    return false;
+                })
+                .collect(Collectors.toList());
         }
         // Nếu là admin, lấy tất cả bài kiểm tra của môn học đó
         else if ("admin".equals(user.getRole().getName())) {
@@ -375,26 +445,37 @@ public class ExamService {
             throw new RuntimeException("Bài kiểm tra chưa được công bố!");
         }
 
-        Optional<Result> existingResultOpt = resultRepository.findByUserIdAndExamId(studentId, examId);
-        
-        if (existingResultOpt.isPresent()) {
-            Result existingResult = existingResultOpt.get();
-            if (!Boolean.TRUE.equals(existingResult.getAllowRetake())) {
-                throw new RuntimeException("Bạn đã bắt đầu bài kiểm tra này rồi!");
-            } else {
-                // Reset trạng thái cho phép làm lại sau khi dùng
-                existingResult.setAllowRetake(false);
-                resultRepository.save(existingResult);
-            }
-        }
-
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startTime = now;
         LocalDateTime endTime;
 
         if (Boolean.TRUE.equals(exam.getIsPublic())) {
+            // Cho phép làm lại không giới hạn lần: luôn tạo Result mới
             endTime = now.plusMinutes(exam.getDurationTime());
+            Result result = new Result();
+            result.setUser(student);
+            result.setExam(exam);
+            result.setStartTime(startTime);
+            result.setEndTime(endTime);
+            result.setIsSubmitted(false);
+            result.setScore(0);
+            result.setIsPassed(false);
+            result.setAllowRetake(false);
+            return resultMapper.toFullDTO(resultRepository.save(result));
         } else {
+            // Logic cũ cho bài kiểm tra không phải public
+            Optional<Result> existingResultOpt = resultRepository.findByUserIdAndExamId(studentId, examId);
+            if (existingResultOpt.isPresent()) {
+                Result existingResult = existingResultOpt.get();
+                if (!Boolean.TRUE.equals(existingResult.getAllowRetake())) {
+                    throw new RuntimeException("Bạn đã bắt đầu bài kiểm tra này rồi!");
+                } else {
+                    // Reset trạng thái cho phép làm lại sau khi dùng
+                    existingResult.setAllowRetake(false);
+                    resultRepository.save(existingResult);
+                }
+            }
+
             LocalDateTime examStart = exam.getStartAt();
             LocalDateTime examEnd = exam.getEndAt();
             int delayAllowedMinutes = 5;
@@ -420,19 +501,18 @@ public class ExamService {
             }
 
             endTime = now.plusMinutes(remainingTime);
+
+            Result result = new Result();
+            result.setUser(student);
+            result.setExam(exam);
+            result.setStartTime(startTime);
+            result.setEndTime(endTime);
+            result.setIsSubmitted(false);
+            result.setScore(0);
+            result.setIsPassed(false);
+            result.setAllowRetake(false);
+            return resultMapper.toFullDTO(resultRepository.save(result));
         }
-
-        Result result = new Result();
-        result.setUser(student);
-        result.setExam(exam);
-        result.setStartTime(startTime);
-        result.setEndTime(endTime);
-        result.setIsSubmitted(false);
-        result.setScore(0);
-        result.setIsPassed(false);
-        result.setAllowRetake(false); // Mặc định không được làm lại nữa
-
-        return resultMapper.toFullDTO(resultRepository.save(result));
     }
 
     //Cho phép sinh viên làm lại bài kiểm tra
@@ -469,7 +549,7 @@ public class ExamService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đáp án"));
 
         // Kiểm tra nếu sinh viên đã bắt đầu bài thi
-        Result result = resultRepository.findByExamAndUser(exam, student)
+        Result result = resultRepository.findTopByExamAndUserOrderByStartTimeDesc(exam, student)
                 .orElseThrow(() -> new RuntimeException("Sinh viên chưa bắt đầu bài kiểm tra"));
 
         if (result.getIsSubmitted()) {
@@ -478,7 +558,14 @@ public class ExamService {
 
         // Kiểm tra nếu đã chọn đáp án cho câu hỏi này
         UserAnswer userAnswer = userAnswerRepository.findByExamAndUserAndQuestion(exam, student, question)
-                .orElse(new UserAnswer());
+                .orElseGet(() -> {
+                    // Nếu có nhiều bản ghi, lấy bản ghi mới nhất theo id
+                    List<UserAnswer> all = userAnswerRepository.findByExamAndUser(exam, student);
+                    return all.stream()
+                        .filter(ua -> ua.getQuestion().equals(question))
+                        .max((a, b) -> Long.compare(a.getId(), b.getId()))
+                        .orElse(new UserAnswer());
+                });
 
         userAnswer.setUser(student);
         userAnswer.setExam(exam);
@@ -696,5 +783,53 @@ public class ExamService {
         exam.setModifiedAt(LocalDateTime.now());
         examRepository.save(exam);
         return examMapper.toFullDTO(exam);
+    }
+
+    @Transactional
+    public void autoAddExamToPublic(Exam exam) {
+        if (exam.getStatus() != Exam.Status.CLOSED) {
+            return;
+        }
+
+        if (exam.getMarkedAsPublic()) {
+            exam.setIsPublic(true);
+            examRepository.save(exam);
+        }
+    }
+
+    // Lấy kết quả làm bài hiện tại (chưa nộp) của sinh viên cho một bài kiểm tra
+    public ResultDTO getCurrentResult(Long examId, Long studentId) {
+        Result result = resultRepository.findTopByUserIdAndExamIdOrderByStartTimeDesc(studentId, examId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bạn chưa bắt đầu làm bài kiểm tra này!"));
+        if (Boolean.TRUE.equals(result.getIsSubmitted())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bạn đã nộp bài kiểm tra này rồi!");
+        }
+        return resultMapper.toFullDTO(result);
+    }
+
+    public ResultDTO getLatestSubmittedResult(Long studentId, Long examId) {
+        Result result = resultRepository
+            .findTopByUserIdAndExamIdAndIsSubmittedTrueOrderBySubmitTimeDesc(studentId, examId)
+            .orElseThrow(() -> new RuntimeException("Chưa có kết quả đã nộp cho bài kiểm tra này!"));
+        return resultMapper.toFullDTO(result);
+    }
+
+    public Map<String, Integer> getCorrectAndWrongAnswers(Long studentId, Long examId) {
+        Result result = resultRepository
+            .findTopByUserIdAndExamIdAndIsSubmittedTrueOrderBySubmitTimeDesc(studentId, examId)
+            .orElseThrow(() -> new RuntimeException("Chưa có kết quả đã nộp cho bài kiểm tra này!"));
+        List<UserAnswer> answers = userAnswerRepository.findByResultId(result.getId());
+        int correct = 0, wrong = 0;
+        for (UserAnswer ua : answers) {
+            if (ua.getAnswer() != null && Boolean.TRUE.equals(ua.getAnswer().getIsCorrect())) {
+                correct++;
+            } else {
+                wrong++;
+            }
+        }
+        Map<String, Integer> map = new HashMap<>();
+        map.put("correct", correct);
+        map.put("wrong", wrong);
+        return map;
     }
 }

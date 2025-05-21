@@ -6,6 +6,7 @@ import java.util.HashSet;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -14,10 +15,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Setter
 @Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Table(name = "exams")
 public class Exam {
 
@@ -56,7 +58,10 @@ public class Exam {
     private Integer passScore;
 
     @Column(name = "is_public", nullable = false)
-    private Boolean isPublic;
+    private Boolean isPublic = false;
+
+    @Column(name = "marked_as_public", nullable = false)
+    private Boolean markedAsPublic = false;
 
     @Column(name = "start_at")
     private LocalDateTime startAt;
@@ -114,6 +119,14 @@ public class Exam {
         inverseJoinColumns = @JoinColumn(name = "department_id", referencedColumnName = "id")
     )
     private Set<Department> departments = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "exam_chapters",
+        joinColumns = @JoinColumn(name = "exam_id"),
+        inverseJoinColumns = @JoinColumn(name = "chapter_id")
+    )
+    private Set<Chapter> chapters = new HashSet<>();
 
     public enum Status {
         DRAFT, PUBLISHED, CLOSED

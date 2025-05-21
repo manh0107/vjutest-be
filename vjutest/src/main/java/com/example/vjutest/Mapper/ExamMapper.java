@@ -8,6 +8,9 @@ import com.example.vjutest.DTO.SubjectDTO;
 import com.example.vjutest.Model.Exam;
 import com.example.vjutest.Model.Exam.ExamVisibility;
 import com.example.vjutest.Model.Exam.Status;
+import com.example.vjutest.Repository.ChapterRepository;
+import com.example.vjutest.Model.Chapter;
+import java.util.HashSet;
 
 @Component
 public class ExamMapper {
@@ -15,12 +18,14 @@ public class ExamMapper {
     private final ClassSubjectMapper classSubjectMapper;
     private final SubjectMapper subjectMapper;
     private final UserMapper userMapper;
+    private final ChapterRepository chapterRepository;
 
     @Autowired
-    public ExamMapper(ClassSubjectMapper classSubjectMapper, SubjectMapper subjectMapper, UserMapper userMapper) {
+    public ExamMapper(ClassSubjectMapper classSubjectMapper, SubjectMapper subjectMapper, UserMapper userMapper, ChapterRepository chapterRepository) {
         this.classSubjectMapper = classSubjectMapper;
         this.subjectMapper = subjectMapper;
         this.userMapper = userMapper;
+        this.chapterRepository = chapterRepository;
     }
 
     // Chuyển đổi Exam -> ExamDTO (Đơn giản)
@@ -131,6 +136,10 @@ public class ExamMapper {
             dto.setMajorIds(exam.getMajors().stream().map(m -> m.getId()).toList());
         }
 
+        if (exam.getChapters() != null && !exam.getChapters().isEmpty()) {
+            dto.setChapterIds(exam.getChapters().stream().map(Chapter::getId).toList());
+        }
+
         return dto;
     }
 
@@ -159,6 +168,11 @@ public class ExamMapper {
                 throw new IllegalArgumentException("Invalid status: " + dto.getStatus());
             }
         } 
+
+        if (dto.getChapterIds() != null && !dto.getChapterIds().isEmpty()) {
+            exam.setChapters(new HashSet<>(chapterRepository.findAllById(dto.getChapterIds())));
+        }
+
         return exam;
     }
     

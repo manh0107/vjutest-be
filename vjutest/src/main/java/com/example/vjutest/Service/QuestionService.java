@@ -132,7 +132,7 @@ public class QuestionService {
             question.setIsPublic(true);
             question.setMarkedAsPublic(true);
         }
-        
+
         question.setChapter(chapter);
 
         // Handle image upload
@@ -404,7 +404,12 @@ public class QuestionService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         // Kiểm tra quyền truy cập
-        if (!exam.getCreatedBy().equals(user) && !"admin".equals(user.getRole().getName())) {
+        if ("student".equals(user.getRole().getName())) {
+            // Học sinh chỉ được xem câu hỏi khi đã bắt đầu làm bài kiểm tra
+            if (!exam.getResults().stream().anyMatch(result -> result.getUser().equals(user))) {
+                throw new UnauthorizedAccessException("Bạn chưa bắt đầu làm bài kiểm tra này!");
+            }
+        } else if (!"teacher".equals(user.getRole().getName()) && !"admin".equals(user.getRole().getName())) {
             throw new UnauthorizedAccessException("Bạn không có quyền xem câu hỏi của bài kiểm tra này!");
         }
 
@@ -415,7 +420,7 @@ public class QuestionService {
     }
 
     public List<Question> getQuestionsByChapter(Long chapterId) {
-        return questionRepository.findByChapterId(chapterId);
+        return questionRepository.findByChapterIdAndIsPublicTrue(chapterId);
     }
 
     public List<Question> getCompletedQuestionsByChapter(Long chapterId) {
@@ -456,7 +461,7 @@ public class QuestionService {
 
         // Tạo câu hỏi mới từ câu hỏi gốc
         Question newQuestion = new Question();
-        newQuestion.setName(originalQuestion.getName() + " (Bản sao)");
+        newQuestion.setName(originalQuestion.getName());
         newQuestion.setDifficulty(originalQuestion.getDifficulty());
         newQuestion.setIsPublic(originalQuestion.getIsPublic());
         newQuestion.setMarkedAsPublic(originalQuestion.getMarkedAsPublic());

@@ -9,7 +9,8 @@ public class RegisterRequest {
     private String name;
     private Long code;
     private Long phoneNumber;
-    private String className;
+    private String major;
+    private String department;
     private String gender;
     private String email;
     private String password;

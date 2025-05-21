@@ -17,4 +17,8 @@ public interface ResultRepository extends JpaRepository<Result, Long>{
     Optional<Result> findByExamAndUser(Exam exam, User user);
     List<Result> findByUserIdAndIsSubmittedTrue(Long userId);
     long countByExamAndUser(Exam exam, User user);
+    Optional<Result> findTopByExamAndUserOrderByStartTimeDesc(Exam exam, User user);
+    Optional<Result> findTopByExamAndUserOrderByIdDesc(Exam exam, User user);
+    Optional<Result> findTopByUserIdAndExamIdOrderByStartTimeDesc(Long userId, Long examId);
+    Optional<Result> findTopByUserIdAndExamIdAndIsSubmittedTrueOrderBySubmitTimeDesc(Long userId, Long examId);
 }

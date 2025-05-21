@@ -107,8 +107,9 @@ public class SubjectService {
                         return true;
                     }
                     if (subject.getVisibility() == Subject.VisibilityScope.DEPARTMENT) {
-                        return subject.getMajors().stream()
-                                .anyMatch(major -> major.getDepartment().equals(user.getDepartment()));
+                        return subject.getDepartments() != null && 
+                               user.getDepartment() != null &&
+                               subject.getDepartments().contains(user.getDepartment());
                     }
                     return subject.getMajors().stream()
                             .anyMatch(major -> major.equals(user.getMajor()));

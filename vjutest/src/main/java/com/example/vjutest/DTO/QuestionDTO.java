@@ -3,6 +3,7 @@ package com.example.vjutest.DTO;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.AllArgsConstructor;
@@ -14,6 +15,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class QuestionDTO {
     private Long id;
     private String name;
@@ -40,6 +42,7 @@ public class QuestionDTO {
     private ChapterDTO chapter;
 
     private List<ExamQuestionDTO> examQuestions;
+    private List<AnswerDTO> answers;
 
     private String imageUrl;
 
