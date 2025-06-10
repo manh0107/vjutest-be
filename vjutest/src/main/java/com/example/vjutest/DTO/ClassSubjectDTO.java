@@ -16,4 +16,5 @@ public class ClassSubjectDTO {
     private ClassEntityDTO classEntity;
     private SubjectDTO subject;
     private String documentUrl;
+    private String fileName;
 }

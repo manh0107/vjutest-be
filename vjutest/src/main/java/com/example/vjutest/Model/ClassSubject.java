@@ -37,6 +37,9 @@ public class ClassSubject {
     @Column(name = "document_url")
     private String documentUrl;
 
+    @Column(name = "file_name")
+    private String fileName;
+
     @OneToMany(mappedBy = "classSubject", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Exam> exams;
 

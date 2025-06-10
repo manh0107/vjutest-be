@@ -35,6 +35,8 @@ public class ClassSubjectMapper {
         // Lấy đường dẫn tài liệu
         dto.setDocumentUrl(classSubject.getDocumentUrl());
 
+        dto.setFileName(classSubject.getFileName());
+
         return dto;
     }
 
@@ -54,6 +56,8 @@ public class ClassSubjectMapper {
 
         // Lấy đường dẫn tài liệu
         dto.setDocumentUrl(classSubject.getDocumentUrl());
+
+        dto.setFileName(classSubject.getFileName());
 
         return dto;
     }

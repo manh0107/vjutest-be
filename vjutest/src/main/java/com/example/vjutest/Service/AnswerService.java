@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.vjutest.Repository.AnswerRepository;
 import com.example.vjutest.Repository.QuestionRepository;
 import com.example.vjutest.Repository.UserRepository;
+import com.example.vjutest.Repository.UserAnswerRepository;
 import com.example.vjutest.DTO.AnswerDTO;
 import com.example.vjutest.Mapper.AnswerMapper;
 import com.example.vjutest.Model.Answer;
@@ -29,6 +30,7 @@ public class AnswerService {
     private final UserRepository userRepository;
     private final QuestionService questionService;
     private final CloudinaryService cloudinaryService;
+    private final UserAnswerRepository userAnswerRepository;
 
     public List<AnswerDTO> createAnswersForQuestion(Long questionId, Long userId, List<AnswerDTO> answerRequest, List<MultipartFile> imageFiles) throws IOException {
         Question question = questionRepository.findById(questionId)
@@ -160,7 +162,16 @@ public class AnswerService {
 
     public List<AnswerDTO> getAnswersByQuestionDTO(Long questionId) {
         List<Answer> answers = answerRepository.findByQuestionId(questionId);
-        return answers.stream().map(answerMapper::toSimpleDTO).toList();
+        long total = userAnswerRepository.countByQuestionId(questionId);
+        List<AnswerDTO> dtos = new ArrayList<>();
+        for (Answer answer : answers) {
+            AnswerDTO dto = answerMapper.toSimpleDTO(answer);
+            long count = userAnswerRepository.countByQuestionIdAndAnswerId(questionId, answer.getId());
+            double percent = (total > 0) ? (count * 100.0 / total) : 0.0;
+            dto.setPercentChosen(percent);
+            dtos.add(dto);
+        }
+        return dtos;
     }
 
     @Transactional

@@ -348,4 +348,8 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    public long countAllUsers() {
+        return userRepository.count();
+    }
+
 }

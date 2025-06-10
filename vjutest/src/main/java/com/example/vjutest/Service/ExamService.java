@@ -832,4 +832,8 @@ public class ExamService {
         map.put("wrong", wrong);
         return map;
     }
+
+    public long countAllExams() {
+        return examRepository.count();
+    }
 }

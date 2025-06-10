@@ -70,7 +70,11 @@ public class ClassSubjectService {
         String documentUrl = null;
 
         try {
-            documentUrl = googleDriveService.uploadFile(tempFile, folderId);
+            String uploadResult = googleDriveService.uploadFile(tempFile, folderId);
+            String[] parts = uploadResult.split("\\|\\|");
+            documentUrl = parts[0];
+            String fileName = parts.length > 1 ? parts[1] : null;
+            existingClassSubject.setFileName(fileName);
         } catch (IOException e) {
             throw new IOException("Lỗi khi upload file lên Google Drive: " + e.getMessage());
         } finally {

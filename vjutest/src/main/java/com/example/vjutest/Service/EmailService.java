@@ -12,13 +12,13 @@ public class EmailService {
     @Autowired
     private JavaMailSender javaMailSender;
 
-    public void sendEmail(String to, String subject, String body) {
+    public void sendEmail(String to, String subject, String body, boolean isHtml) {
         try {
             jakarta.mail.internet.MimeMessage mimeMessage = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
             helper.setTo(to);
             helper.setSubject(subject);
-            helper.setText(body, true); // true để gửi dưới dạng HTML nếu cần
+            helper.setText(body, isHtml); // true để gửi dưới dạng HTML nếu cần
             javaMailSender.send(mimeMessage);
         } catch (MailException | jakarta.mail.MessagingException e) {
             e.printStackTrace();

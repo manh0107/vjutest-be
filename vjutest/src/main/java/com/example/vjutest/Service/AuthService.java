@@ -102,9 +102,32 @@ public class AuthService {
         user.setVerificationToken(verificationCode);  // Lưu mã xác nhận
         userRepository.save(user);
 
-        // Gửi mã xác nhận qua email
-        emailService.sendEmail(user.getEmail(), "Mã xác nhận tài khoản", 
-                "Mã xác nhận của bạn là: " + verificationCode);
+        // Gửi mã xác nhận qua email (HTML đẹp)
+        String html = String.format("""
+        <html><body style='background:#f6f6f6;padding:0;margin:0;'>
+        <table width='100%%' cellpadding='0' cellspacing='0' style='background:#f6f6f6;'><tr><td align='center'>
+        <table width='480' cellpadding='0' cellspacing='0' style='background:#fff;border-radius:12px;margin:32px 0;box-shadow:0 2px 8px #eee;'>
+        <tr><td style='padding:32px 32px 16px 32px;text-align:center;'>
+        <img src='%s' alt='Quiz Icon' width='64' style='margin-bottom:16px;'>
+        <h2 style='color:#b8021e;margin:0 0 8px 0;font-family:sans-serif;'>VJUTest</h2>
+        <h3 style='color:#222;margin:0 0 24px 0;font-family:sans-serif;'>Xác nhận tài khoản</h3>
+        <p style='color:#444;font-size:16px;margin:0 0 24px 0;font-family:sans-serif;'>
+        Xin chào <b>%s</b>,<br>
+        Cảm ơn bạn đã đăng ký. Mã xác nhận của bạn là:<br>
+        <span style='display:inline-block;font-size:28px;font-weight:bold;color:#b8021e;letter-spacing:4px;margin:16px 0;'>%s</span>
+        </p>
+        <p style='color:#888;font-size:13px;margin:24px 0 0 0;font-family:sans-serif;'>
+        Vui lòng nhập mã này vào trang xác nhận tài khoản.<br>
+        Nếu bạn không thực hiện đăng ký, hãy bỏ qua email này.<br>
+        Mọi thắc mắc vui lòng liên hệ <a href='mailto:vjutestapp@gmail.com' style='color:#b8021e;'>vjutestapp@gmail.com</a>
+        </p>
+        </td></tr></table></td></tr></table></body></html>
+        """,
+        "https://cdn-icons-png.flaticon.com/512/3135/3135768.png",
+        user.getName(),
+        verificationCode
+        );
+        emailService.sendEmail(user.getEmail(), "Mã xác nhận tài khoản", html, true);
 
         return "Đăng ký thành công! Kiểm tra email để lấy mã xác nhận.";
     }
@@ -189,9 +212,37 @@ public class AuthService {
         user.setVerificationToken(resetToken);
         userRepository.save(user);
 
-        // Gửi email reset mật khẩu
-        String link = "http://localhost:8080/auth/reset-password?token=" + resetToken;
-        emailService.sendEmail(user.getEmail(), "Đặt lại mật khẩu", "Bấm vào đây để đặt lại mật khẩu: " + link);
+        // Gửi email reset mật khẩu (HTML đẹp)
+        String html = String.format("""
+        <html><body style='background:#f6f6f6;padding:0;margin:0;'>
+        <table width='100%%' cellpadding='0' cellspacing='0' style='background:#f6f6f6;'><tr><td align='center'>
+        <table width='480' cellpadding='0' cellspacing='0' style='background:#fff;border-radius:12px;margin:32px 0;box-shadow:0 2px 8px #eee;'>
+        <tr><td style='padding:32px 32px 16px 32px;text-align:center;'>
+        <img src='%s' alt='Quiz Icon' width='64' style='margin-bottom:16px;'>
+        <h2 style='color:#b8021e;margin:0 0 8px 0;font-family:sans-serif;'>VJUTest</h2>
+        <h3 style='color:#222;margin:0 0 24px 0;font-family:sans-serif;'>Đặt lại mật khẩu</h3>
+        <p style='color:#444;font-size:16px;margin:0 0 24px 0;font-family:sans-serif;'>
+        Xin chào <b>%s</b>,<br>
+        Bạn vừa yêu cầu đặt lại mật khẩu. Nhấn vào nút bên dưới để tạo mật khẩu mới:
+        </p>
+        <a href='%s' style='display:inline-block;padding:12px 32px;background:#b8021e;color:#fff;text-decoration:none;border-radius:6px;font-size:16px;font-weight:bold;margin-bottom:16px;'>Đặt lại mật khẩu</a>
+        <p style='color:#888;font-size:13px;margin:24px 0 0 0;font-family:sans-serif;'>
+        Nếu nút không hoạt động, hãy copy và dán đường link sau vào trình duyệt:<br>
+        <span style='color:#b8021e;word-break:break-all;'>%s</span>
+        </p>
+        <hr style='border:none;border-top:1px solid #eee;margin:32px 0;'>
+        <p style='color:#aaa;font-size:12px;font-family:sans-serif;'>
+        Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email này.<br>
+        Mọi thắc mắc vui lòng liên hệ <a href='mailto:vjutestapp@gmail.com' style='color:#b8021e;'>vjutestapp@gmail.com</a>
+        </p>
+        </td></tr></table></td></tr></table></body></html>
+        """,
+        "https://cdn-icons-png.flaticon.com/512/3135/3135768.png",
+        user.getName(),
+        "http://localhost:3000/reset-password?token=" + resetToken,
+        "http://localhost:3000/reset-password?token=" + resetToken
+        );
+        emailService.sendEmail(user.getEmail(), "Đặt lại mật khẩu", html, true);
 
         return "Hãy kiểm tra email để đặt lại mật khẩu.";
     }

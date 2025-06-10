@@ -81,4 +81,9 @@ public class AuthController {
         UserDTO userDTO = authService.getUserInfo(authentication);
         return ResponseEntity.ok(userDTO);
     }
+
+    @GetMapping("/reset-password")
+    public ResponseEntity<String> resetPasswordPage(@RequestParam(required = false) String token) {
+        return ResponseEntity.ok("Vui lòng nhập mật khẩu mới trên giao diện ứng dụng. Nếu bạn thấy trang này, hãy truy cập lại link đổi mật khẩu từ email trên trình duyệt web hoặc liên hệ quản trị viên.");
+    }
 }

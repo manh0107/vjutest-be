@@ -35,4 +35,6 @@ public class AnswerDTO {
     private UserDTO user;
 
     private String imageUrl;
+
+    private Double percentChosen;
 }

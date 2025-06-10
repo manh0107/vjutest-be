@@ -19,4 +19,6 @@ public interface UserAnswerRepository extends JpaRepository<UserAnswer, Long> {
    UserAnswer findByResultAndQuestion(Result result, Question question);
    List<UserAnswer> findByResult(Result result);
    List<UserAnswer> findByResultId(Long resultId);
+   long countByQuestionId(Long questionId);
+   long countByQuestionIdAndAnswerId(Long questionId, Long answerId);
 }

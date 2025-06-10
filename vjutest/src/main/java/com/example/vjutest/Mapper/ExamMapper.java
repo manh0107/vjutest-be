@@ -11,6 +11,7 @@ import com.example.vjutest.Model.Exam.Status;
 import com.example.vjutest.Repository.ChapterRepository;
 import com.example.vjutest.Model.Chapter;
 import java.util.HashSet;
+import com.example.vjutest.Mapper.ChapterMapper;
 
 @Component
 public class ExamMapper {
@@ -19,13 +20,15 @@ public class ExamMapper {
     private final SubjectMapper subjectMapper;
     private final UserMapper userMapper;
     private final ChapterRepository chapterRepository;
+    private final ChapterMapper chapterMapper;
 
     @Autowired
-    public ExamMapper(ClassSubjectMapper classSubjectMapper, SubjectMapper subjectMapper, UserMapper userMapper, ChapterRepository chapterRepository) {
+    public ExamMapper(ClassSubjectMapper classSubjectMapper, SubjectMapper subjectMapper, UserMapper userMapper, ChapterRepository chapterRepository, ChapterMapper chapterMapper) {
         this.classSubjectMapper = classSubjectMapper;
         this.subjectMapper = subjectMapper;
         this.userMapper = userMapper;
         this.chapterRepository = chapterRepository;
+        this.chapterMapper = chapterMapper;
     }
 
     // Chuyển đổi Exam -> ExamDTO (Đơn giản)
@@ -138,6 +141,7 @@ public class ExamMapper {
 
         if (exam.getChapters() != null && !exam.getChapters().isEmpty()) {
             dto.setChapterIds(exam.getChapters().stream().map(Chapter::getId).toList());
+            dto.setChapters(exam.getChapters().stream().map(chapterMapper::toDTO).toList());
         }
 
         return dto;

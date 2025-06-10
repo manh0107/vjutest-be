@@ -68,16 +68,21 @@ public class GoogleDriveService {
             File fileMetadata = new File();
             fileMetadata.setName(file.getName());
     
-            if (folderId != null && !folderId.isEmpty()) {
-                fileMetadata.setParents(Collections.singletonList(folderId));
-            }
+            // Luôn set parent là folderId mặc định
+            String defaultFolderId = "1mrCH-ASy-WV4s61omARxhg7RBsewH9ro";
+            fileMetadata.setParents(Collections.singletonList(defaultFolderId));
     
             FileContent mediaContent = new FileContent("application/octet-stream", file);
             File uploadedFile = driveService.files().create(fileMetadata, mediaContent)
-                    .setFields("id, webViewLink")
+                    .setFields("id, webViewLink, name")
                     .execute();
     
-            return uploadedFile.getWebViewLink();
+            String documentUrl = uploadedFile.getWebViewLink();
+            if (documentUrl != null && documentUrl.contains("/edit")) {
+                documentUrl = documentUrl.replace("/edit", "/view");
+            }
+            String fileName = uploadedFile.getName();
+            return documentUrl + "||" + fileName;
         } catch (Exception e) {
             throw new IOException("Lỗi khi upload file lên Google Drive: " + e.getMessage());
         }

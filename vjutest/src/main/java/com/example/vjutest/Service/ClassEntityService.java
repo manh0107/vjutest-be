@@ -468,16 +468,22 @@ public class ClassEntityService {
 
         // Kiểm tra môn học có thuộc cùng khoa/ngành không
         if (classEntity.getVisibility() == ClassEntity.VisibilityScope.DEPARTMENT) {
-            boolean isSubjectInDepartment = subject.getDepartments().stream()
+            if (subject.getVisibility() == Subject.VisibilityScope.PUBLIC) {
+            } else {
+                boolean isSubjectInDepartment = subject.getDepartments().stream()
                     .anyMatch(department -> classEntity.getDepartments().contains(department));
-            if (!isSubjectInDepartment) {
-                throw new UnauthorizedAccessException("Môn học không thuộc cùng khoa với lớp học");
-            }
+                if (!isSubjectInDepartment) {
+                    throw new UnauthorizedAccessException("Môn học không thuộc cùng khoa với lớp học");
+                }
+            }    
         } else if (classEntity.getVisibility() == ClassEntity.VisibilityScope.MAJOR) {
-            boolean isSubjectInMajor = subject.getMajors().stream()
-                    .anyMatch(major -> classEntity.getMajors().contains(major));
-            if (!isSubjectInMajor) {
-                throw new UnauthorizedAccessException("Môn học không thuộc cùng ngành với lớp học");
+            if (subject.getVisibility() == Subject.VisibilityScope.PUBLIC) {
+                } else {
+                boolean isSubjectInMajor = subject.getMajors().stream()
+                        .anyMatch(major -> classEntity.getMajors().contains(major));
+                if (!isSubjectInMajor) {
+                    throw new UnauthorizedAccessException("Môn học không thuộc cùng ngành với lớp học");
+                }
             }
         }
 
@@ -621,5 +627,9 @@ public class ClassEntityService {
 
         joinRequest.setStatus(JoinRequest.Status.REJECTED);
         joinRequestRepository.save(joinRequest);
+    }
+
+    public long countAllClasses() {
+        return classEntityRepository.count();
     }
 }

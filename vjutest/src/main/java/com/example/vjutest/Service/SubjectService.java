@@ -260,4 +260,8 @@ public class SubjectService {
             throw e;
         }
     }
+
+    public long countAllSubjects() {
+        return subjectRepository.count();
+    }
 }

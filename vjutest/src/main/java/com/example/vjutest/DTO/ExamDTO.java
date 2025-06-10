@@ -63,4 +63,5 @@ public class ExamDTO {
     private Boolean markedAsPublic;
 
     private List<Long> chapterIds;
+    private List<ChapterDTO> chapters;
 }

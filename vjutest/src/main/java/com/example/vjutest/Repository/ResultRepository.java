@@ -21,4 +21,5 @@ public interface ResultRepository extends JpaRepository<Result, Long>{
     Optional<Result> findTopByExamAndUserOrderByIdDesc(Exam exam, User user);
     Optional<Result> findTopByUserIdAndExamIdOrderByStartTimeDesc(Long userId, Long examId);
     Optional<Result> findTopByUserIdAndExamIdAndIsSubmittedTrueOrderBySubmitTimeDesc(Long userId, Long examId);
+    List<Result> findTop10ByOrderBySubmitTimeDesc();
 }
