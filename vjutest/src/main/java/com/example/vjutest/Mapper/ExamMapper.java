@@ -11,7 +11,6 @@ import com.example.vjutest.Model.Exam.Status;
 import com.example.vjutest.Repository.ChapterRepository;
 import com.example.vjutest.Model.Chapter;
 import java.util.HashSet;
-import com.example.vjutest.Mapper.ChapterMapper;
 
 @Component
 public class ExamMapper {
